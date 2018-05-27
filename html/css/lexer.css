@@ -1,0 +1,21 @@
+* {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+body {
+	background-color: #000;
+	color: #ddd;
+}
+
+textarea#input {
+	background-color: #222;
+	color: #fff;
+	font-family: monospace;
+	font-size: 12pt;
+	width: 100%;
+	height: 496px;
+	box-sizing: border-box;
+	border: 1px solid #888;
+}
