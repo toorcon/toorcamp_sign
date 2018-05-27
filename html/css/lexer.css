@@ -7,9 +7,12 @@
 body {
 	background-color: #000;
 	color: #ddd;
+	margin: 20px;
 }
 
 textarea#input {
+	border-radius: 4px;
+	padding: 3px;
 	background-color: #222;
 	color: #fff;
 	font-family: monospace;

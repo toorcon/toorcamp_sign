@@ -47,6 +47,35 @@ function parseExpression(e)
 			continue;
 		}
 
+		// Parens?
+		if (e[0] === '(') {
+			// You can match balanced parens with a regex, but it's a known hard problem.
+			// Here's a simpler way: Count paren pairs.
+			var depth = 0;
+			for (var i = 0; i < e.length; i++) {
+				if (e[i] === '(') depth++;
+				if (e[i] === ')') depth--;
+
+				if (depth === 0) {
+					var match = e.substr(0, i + 1);
+					var inside = e.substr(1, match.length - 2);
+
+					tokens.push(parseExpression(inside));
+					stripToken(match);
+					break;
+				}
+			}
+
+			// Success
+			if (depth == 0) {
+				continue;
+			}
+
+			// Unbalanced parens
+			console.warn("Open paren detected:", e);
+			return;
+		}
+
 		// Error?
 		console.warn("Can't parse next token:", e);
 		break;
@@ -112,4 +141,4 @@ function tryParseAgain()
 	parseInput(input);
 }
 
-setInterval(tryParseAgain, 500);
+setInterval(tryParseAgain, 1000);
