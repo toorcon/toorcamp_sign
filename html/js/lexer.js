@@ -5,6 +5,8 @@ const OPERATORS = "*,/,%,+,-,<,<=,>,>=,==,!=,?,:".split(",");
 
 const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
+const ASSIGN_REF = '= += -= *= /= %=';
+
 const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,randi,randRangei,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
 
 const SPECIAL_VARS = {
@@ -250,18 +252,32 @@ function parseStatement(statement)
 {
 	if (statement.trim().length == 0) return true;
 
-	var left = statement.split('=')[0];
-	var right = statement.split(/=(.+)/)[1];
+	console.log('"' + statement + '"');
+	var sides = statement.match(/^([\s\S]*?)([-+*\/%]?=)([\s\S]*)$/);
 
-	if (!left || !right) {
+	/*
+	var left = statement.split(ASSIGN_REGEX)[0];
+	var right = statement.split(/=(.+)/)[1];
+	*/
+
+	if (!sides) {
 		barf("Expression needs '=' assignment", statement);
 		return false;
 	}
+
+	var left = sides[1];
+	var right = sides[3];
 
 	var name = left.trim();
 	if (SPECIAL_VARS.hasOwnProperty(name)) {
 		barf("Cannot assign to special var <b>" + name + "</b>", statement);
 		return false;
+	}
+
+	// Hack to support operator assignments like: '+=', '/='
+	var assign = sides[2];
+	if (assign.length > 1) {
+		right = left + assign[0] + '(' + right + ')';
 	}
 
 	var step = parseExpression(right);
@@ -325,6 +341,7 @@ function tryParseAgain()
 $(document).ready(function(){
 	var ref = '<p>HANDY REFERENCE</p>';
 	ref += '<p><b>OPERATORS:</b> ' + OPERATOR_REF + '</p>';
+	ref += '<p><b>ASSIGNS:</b> ' + ASSIGN_REF + '</p>';
 	ref += '<p><b>FUNCTIONS:</b> ' + FUNCS.join(", ") + '</p>';
 	ref += '<p><b>SPECIAL VARS</b><br/>';
 	ref += _.map(Object.keys(SPECIAL_VARS), function(key){

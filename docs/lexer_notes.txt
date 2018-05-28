@@ -11,8 +11,8 @@
 
 [X] Ternary operator ?:
 
-* Negation:   -x
+[X] Reassignment
 
-* Reassignment
+* Negation:   -x
 
 * enforce op/function argument count
