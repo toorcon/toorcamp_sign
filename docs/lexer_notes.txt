@@ -5,10 +5,12 @@
 [X] print global vars
 
 [X] test against global vars
-	- Allow using global vars
-
-* Ternary operator ?:
+	[X] Allow using global vars
 
 * Logic operators > < ==
+
+* Reassignment
+
+* Ternary operator ?:
 
 * enforce op/function argument count

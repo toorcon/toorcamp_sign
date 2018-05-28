@@ -1,5 +1,9 @@
+const MAX_CODE_STEPS = 100;
+
 // In order of precedence
-const OPERATORS = "*,/,+,-".split(",");
+const OPERATORS = "*,/,%,+,-,<,<=,>,>=,==,!=,?,:".split(",");
+
+const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
 const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,randi,randRangei,min,max,lerp,clamp,tri,uni2bi,bi2uni".split(",").sort();
 
@@ -42,7 +46,7 @@ function addStep(op, a, b, c) {
 
 	steps.push({op: op, a: a || 0, b: b || 0, c: c || 0});
 
-	if (steps.length > 10) {
+	if (steps.length > MAX_CODE_STEPS) {
 		throw new Error("TOO MANY STEPS");
 	}
 
@@ -117,10 +121,13 @@ function parseExpression(e)
 		}
 
 		// Operator?
-		var cIdx = OPERATORS.indexOf(e[0]);
-		if (cIdx >= 0) {
-			tokens.push(e[0]);
-			stripToken(e[0]);
+		const OPS_SORTED = OPERATORS.sort(function(a,b){return b.length - a.length;});
+		var opFound = _.find(OPS_SORTED, function(op){
+			return e.substr(0, op.length) === op;
+		});
+		if (opFound) {
+			tokens.push(opFound);
+			stripToken(opFound);
 			continue;
 		}
 
@@ -216,7 +223,7 @@ function parseExpression(e)
 	}
 
 	if (tokens.length > 1) {
-		barf("Expression finished with >1 token, hmm: " + tokens);
+		barf("Expression finished with >1 token, hmm", tokens);
 	}
 }
 
@@ -227,20 +234,21 @@ function parseStatement(statement)
 {
 	if (statement.trim().length == 0) return true;
 
-	var sides = statement.split(/=/);
+	var left = statement.split('=')[0];
+	var right = statement.split(/=(.+)/)[1];
 
-	if (sides.length !== 2) {
+	if (!left || !right) {
 		barf("Expression needs '=' assignment", statement);
 		return false;
 	}
 
-	var name = sides[0].trim();
+	var name = left.trim();
 	if (SPECIAL_VARS.hasOwnProperty(name)) {
 		barf("Cannot assign to special var <b>" + name + "</b>", statement);
 		return false;
 	}
 
-	var step = parseExpression(sides[1]);
+	var step = parseExpression(right);
 	if (step) {
 		console.log("Storing:", name, '=', step);
 		varNames[name] = step;
@@ -300,7 +308,7 @@ function tryParseAgain()
 
 $(document).ready(function(){
 	var ref = '<p>HANDY REFERENCE</p>';
-	ref += '<p><b>OPERATORS:</b> ' + OPERATORS.join(" ") + '</p>';
+	ref += '<p><b>OPERATORS:</b> ' + OPERATOR_REF + '</p>';
 	ref += '<p><b>FUNCTIONS:</b> ' + FUNCS.join(", ") + '</p>';
 	ref += '<p><b>SPECIAL VARS</b><br/>';
 	ref += _.map(Object.keys(SPECIAL_VARS), function(key){
