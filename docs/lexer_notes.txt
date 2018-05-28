@@ -7,10 +7,12 @@
 [X] test against global vars
 	[X] Allow using global vars
 
-* Logic operators > < ==
+[X] Logic operators > < ==
+
+[X] Ternary operator ?:
+
+* Negation:   -x
 
 * Reassignment
-
-* Ternary operator ?:
 
 * enforce op/function argument count

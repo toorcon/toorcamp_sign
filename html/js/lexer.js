@@ -5,7 +5,7 @@ const OPERATORS = "*,/,%,+,-,<,<=,>,>=,==,!=,?,:".split(",");
 
 const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
-const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,randi,randRangei,min,max,lerp,clamp,tri,uni2bi,bi2uni".split(",").sort();
+const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,randi,randRangei,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
 
 const SPECIAL_VARS = {
 	"T": "time, in seconds",
@@ -164,7 +164,7 @@ function parseExpression(e)
 		}
 
 		// Var name / "step_234" / special var?
-		var nameMatch = e.match(/^[a-zA-Z_\-]+/);
+		var nameMatch = e.match(/^[a-zA-Z_\-][a-zA-Z0-9_\-]*/);
 		if (nameMatch) {
 			if (SPECIAL_VARS.hasOwnProperty(nameMatch[0])) {
 				tokens.push('var_' + nameMatch[0]);
@@ -206,15 +206,31 @@ function parseExpression(e)
 
 	// Check for the existence of OPERATORs, in order of precedence.
 	// Add steps for these.
-	_.each(OPERATORS, function(op){
-		for (var i = tokens.length - 2; i >= 1; i--) {
-			// Merge 3 tokens into 1 token: [3, "*", 2] => "step_786"
+	for (var op of OPERATORS) {
+		// Ternary colon: We intercept the '?' op instead, see below...
+		if (op === ':') continue;
+
+		for (var i = tokens.length - ((op === '?') ? 4 : 2); i >= 1; i--) {
 			if (tokens[i] === op) {
-				var step = addStep(op, tokens[i - 1], tokens[i + 1]);
-				tokens.splice(i - 1, 3, step);
+				// Ternary: Merge 5 tokens into one expression, like  (a ? b : c)
+				if (op === '?') {
+					if (tokens[i + 2] === ':') {
+						var step = addStep('ternary', tokens[i - 1], tokens[i + 1], tokens[i + 3]);
+						tokens.splice(i - 1, 5, step);
+
+					} else {
+						barf("Ternary op syntax error", tokens);
+						return;
+					}
+
+				} else {
+					// Merge 3 tokens into 1 token: [3, "*", 2] => "step_786"
+					var step = addStep(op, tokens[i - 1], tokens[i + 1]);
+					tokens.splice(i - 1, 3, step);
+				}
 			}
 		}
-	});
+	}
 
 	// Ideally this expression has been reduced to a single step, or value.
 	console.log("finally:", tokens, steps);
