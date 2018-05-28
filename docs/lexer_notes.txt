@@ -2,9 +2,10 @@
 ~~  TODO
 ~~~~~~~~~~~~
 
-* print global vars
+[X] print global vars
 
-* test against global vars
+[X] test against global vars
+	- Allow using global vars
 
 * Ternary operator ?:
 

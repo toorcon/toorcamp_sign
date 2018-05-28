@@ -156,9 +156,15 @@ function parseExpression(e)
 			return;
 		}
 
-		// Var name / "step_234" ?
+		// Var name / "step_234" / special var?
 		var nameMatch = e.match(/^[a-zA-Z_\-]+/);
 		if (nameMatch) {
+			if (SPECIAL_VARS.hasOwnProperty(nameMatch[0])) {
+				tokens.push('var_' + nameMatch[0]);
+				stripToken(nameMatch[0]);
+				continue;
+			}
+
 			if (!varNames.hasOwnProperty(nameMatch[0])) {
 				barf("Unknown var name <b>" + nameMatch[0] + "</b>", e);
 				return;
