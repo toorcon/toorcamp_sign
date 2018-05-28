@@ -1,6 +1,23 @@
 // In order of precedence
 const OPERATORS = "*,/,+,-".split(",");
+
 const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,randi,randRangei,min,max,lerp,clamp,tri,uni2bi,bi2uni".split(",").sort();
+
+const SPECIAL_VARS = {
+	"T": "time, in seconds",
+	"L": "letter id: T=0, O=1, O=2, R=3, ...",
+	"I": "index of LED on strand",
+	"C": "number of LEDs on strand",
+	"P": "ratio of LED on strand (==I/C)",
+	"X": "global X position",
+	"Y": "global Y position",
+	"LX": "X position within the letter",
+	"A": "angle that LED is facing (theta)",
+	"GA": "global angle (from center of sign)",
+	"LA": "local angle (from center of letter)",
+	"IN": "true if inside letter (hole)",
+	"OUT": "true if outside letter (outer edge)",
+};
 
 // Code will execute in order
 // Value is object like:  (a,b,c are arguments)
@@ -142,16 +159,15 @@ function parseExpression(e)
 		// Var name / "step_234" ?
 		var nameMatch = e.match(/^[a-zA-Z_\-]+/);
 		if (nameMatch) {
-			var dest = varNames[nameMatch[0]];
-			console.log("checking for:", nameMatch[0], dest, varNames);
-			if (dest) {
-				tokens.push(dest);
-				stripToken(nameMatch[0]);
-				continue;
+			if (!varNames.hasOwnProperty(nameMatch[0])) {
+				barf("Unknown var name <b>" + nameMatch[0] + "</b>", e);
+				return;
 			}
 
-			barf("Unknown var name", e);
-			return;
+			var dest = varNames[nameMatch[0]];
+			tokens.push(dest);
+			stripToken(nameMatch[0]);
+			continue;
 		}
 
 		// Parens?
@@ -206,9 +222,18 @@ function parseStatement(statement)
 	if (statement.trim().length == 0) return true;
 
 	var sides = statement.split(/=/);
-	if (sides.length !== 2) return false;
+
+	if (sides.length !== 2) {
+		barf("Expression needs '=' assignment", statement);
+		return false;
+	}
 
 	var name = sides[0].trim();
+	if (SPECIAL_VARS.hasOwnProperty(name)) {
+		barf("Cannot assign to special var <b>" + name + "</b>", statement);
+		return false;
+	}
+
 	var step = parseExpression(sides[1]);
 	if (step) {
 		console.log("Storing:", name, '=', step);
@@ -271,6 +296,10 @@ $(document).ready(function(){
 	var ref = '<p>HANDY REFERENCE</p>';
 	ref += '<p><b>OPERATORS:</b> ' + OPERATORS.join(" ") + '</p>';
 	ref += '<p><b>FUNCTIONS:</b> ' + FUNCS.join(", ") + '</p>';
+	ref += '<p><b>SPECIAL VARS</b><br/>';
+	ref += _.map(Object.keys(SPECIAL_VARS), function(key){
+		return '<b>' + key + '</b>: ' + SPECIAL_VARS[key];
+	}).join('<br/>') + '</p>';
 	$('#ref').html(ref);
 
 	setInterval(tryParseAgain, 500);

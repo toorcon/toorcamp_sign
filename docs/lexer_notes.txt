@@ -1,0 +1,13 @@
+~~~~~~~~~~~~
+~~  TODO
+~~~~~~~~~~~~
+
+* print global vars
+
+* test against global vars
+
+* Ternary operator ?:
+
+* Logic operators > < ==
+
+* enforce op/function argument count
