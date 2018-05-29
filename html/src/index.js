@@ -1,7 +1,10 @@
-var $ = require("jquery");
-var _ = require('lodash');
+const $ = require("jquery");
+const _ = require("lodash");
+const W3CWebSocket = require('websocket').w3cwebsocket;
 
 const MAX_CODE_STEPS = 100;
+
+const PORT = 8080;
 
 // In order of precedence
 const OPERATORS = "*,/,%,+,-,<,<=,>,>=,==,!=,?,:".split(",");
@@ -35,6 +38,8 @@ var steps = [];
 
 // Key: "myVar", value: "step_0"
 var varNames = {};
+
+var client = null;
 
 function barf(reason, expr) {
 	var html = '<p class="barf">Error: <b>';
@@ -330,6 +335,10 @@ function parseInput(input)
 	vs += '</p>';
 
 	$('#steps').html(table + vs);
+
+	if (client) {
+		client.send("Socket test! Wooo");
+	}
 }
 
 var _lastInput = "";
@@ -339,6 +348,32 @@ function tryParseAgain()
 	if (input === _lastInput) return;
 	_lastInput = input;
 	parseInput(input);
+}
+
+function portButtonClick(event) {
+	console.log("portButtonClick()");
+}
+
+function startSocket() {
+	client = new W3CWebSocket('ws://localhost:8080/', 'echo-protocol');
+
+	client.onerror = function() {
+		console.log('Connection Error');
+	};
+
+	client.onopen = function() {
+		console.log('WebSocket Client Connected');
+	};
+
+	client.onclose = function() {
+		console.log('echo-protocol Client Closed');
+	};
+
+	client.onmessage = function(e) {
+		if (typeof e.data === 'string') {
+			console.log("Received: '" + e.data + "'");
+		}
+	};
 }
 
 $(document).ready(function(){
@@ -351,6 +386,10 @@ $(document).ready(function(){
 		return '<b>' + key + '</b>: ' + SPECIAL_VARS[key];
 	}).join('<br/>') + '</p>';
 	$('#ref').html(ref);
+
+	$('#port button').on('click', portButtonClick);
+
+	startSocket();
 
 	setInterval(tryParseAgain, 500);
 });

@@ -61,7 +61,7 @@
 /******/ 	
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "680358141b93c2127d5a"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "0edff86f21ff10cc8546"; // eslint-disable-line no-unused-vars
 /******/ 	var hotRequestTimeout = 10000;
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
@@ -736,10 +736,13 @@ module.exports = __webpack_require__(1);
 /* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var $ = __webpack_require__(2);
-var _ = __webpack_require__(3);
+const $ = __webpack_require__(2);
+const _ = __webpack_require__(3);
+const W3CWebSocket = __webpack_require__(6).w3cwebsocket;
 
 const MAX_CODE_STEPS = 100;
+
+const PORT = 8080;
 
 // In order of precedence
 const OPERATORS = "*,/,%,+,-,<,<=,>,>=,==,!=,?,:".split(",");
@@ -773,6 +776,8 @@ var steps = [];
 
 // Key: "myVar", value: "step_0"
 var varNames = {};
+
+var client = null;
 
 function barf(reason, expr) {
 	var html = '<p class="barf">Error: <b>';
@@ -1065,6 +1070,10 @@ function parseInput(input) {
 	vs += '</p>';
 
 	$('#steps').html(table + vs);
+
+	if (client) {
+		client.send("Socket test! Wooo");
+	}
 }
 
 var _lastInput = "";
@@ -1073,6 +1082,32 @@ function tryParseAgain() {
 	if (input === _lastInput) return;
 	_lastInput = input;
 	parseInput(input);
+}
+
+function portButtonClick(event) {
+	console.log("portButtonClick()");
+}
+
+function startSocket() {
+	client = new W3CWebSocket('ws://localhost:8080/', 'echo-protocol');
+
+	client.onerror = function () {
+		console.log('Connection Error');
+	};
+
+	client.onopen = function () {
+		console.log('WebSocket Client Connected');
+	};
+
+	client.onclose = function () {
+		console.log('echo-protocol Client Closed');
+	};
+
+	client.onmessage = function (e) {
+		if (typeof e.data === 'string') {
+			console.log("Received: '" + e.data + "'");
+		}
+	};
 }
 
 $(document).ready(function () {
@@ -1085,6 +1120,10 @@ $(document).ready(function () {
 		return '<b>' + key + '</b>: ' + SPECIAL_VARS[key];
 	}).join('<br/>') + '</p>';
 	$('#ref').html(ref);
+
+	$('#port button').on('click', portButtonClick);
+
+	startSocket();
 
 	setInterval(tryParseAgain, 500);
 });
@@ -28627,6 +28666,67 @@ module.exports = function(module) {
 	return module;
 };
 
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var _global = (function() { return this; })();
+var NativeWebSocket = _global.WebSocket || _global.MozWebSocket;
+var websocket_version = __webpack_require__(7);
+
+
+/**
+ * Expose a W3C WebSocket class with just one or two arguments.
+ */
+function W3CWebSocket(uri, protocols) {
+	var native_instance;
+
+	if (protocols) {
+		native_instance = new NativeWebSocket(uri, protocols);
+	}
+	else {
+		native_instance = new NativeWebSocket(uri);
+	}
+
+	/**
+	 * 'native_instance' is an instance of nativeWebSocket (the browser's WebSocket
+	 * class). Since it is an Object it will be returned as it is when creating an
+	 * instance of W3CWebSocket via 'new W3CWebSocket()'.
+	 *
+	 * ECMAScript 5: http://bclary.com/2004/11/07/#a-13.2.2
+	 */
+	return native_instance;
+}
+if (NativeWebSocket) {
+	['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'].forEach(function(prop) {
+		Object.defineProperty(W3CWebSocket, prop, {
+			get: function() { return NativeWebSocket[prop]; }
+		});
+	});
+}
+
+/**
+ * Module exports.
+ */
+module.exports = {
+    'w3cwebsocket' : NativeWebSocket ? W3CWebSocket : null,
+    'version'      : websocket_version
+};
+
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__(8).version;
+
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports) {
+
+module.exports = {"_from":"websocket","_id":"websocket@1.0.26","_inBundle":false,"_integrity":"sha512-fjcrYDPIQxpTnqFQ9JjxUQcdvR89MFAOjPBlF+vjOt49w/XW4fJknUoMz/mDIn2eK1AdslVojcaOxOqyZZV8rw==","_location":"/websocket","_phantomChildren":{},"_requested":{"type":"tag","registry":true,"raw":"websocket","name":"websocket","escapedName":"websocket","rawSpec":"","saveSpec":null,"fetchSpec":"latest"},"_requiredBy":["#USER","/"],"_resolved":"https://registry.npmjs.org/websocket/-/websocket-1.0.26.tgz","_shasum":"a03a01299849c35268c83044aa919c6374be8194","_spec":"websocket","_where":"/Users/zach/dev/html/lexer/html","author":{"name":"Brian McKelvey","email":"brian@worlize.com","url":"https://www.worlize.com/"},"browser":"lib/browser.js","bugs":{"url":"https://github.com/theturtle32/WebSocket-Node/issues"},"bundleDependencies":false,"config":{"verbose":false},"contributors":[{"name":"Iñaki Baz Castillo","email":"ibc@aliax.net","url":"http://dev.sipdoc.net"}],"dependencies":{"debug":"^2.2.0","nan":"^2.3.3","typedarray-to-buffer":"^3.1.2","yaeti":"^0.0.6"},"deprecated":false,"description":"Websocket Client & Server Library implementing the WebSocket protocol as specified in RFC 6455.","devDependencies":{"buffer-equal":"^1.0.0","faucet":"^0.0.1","gulp":"git+https://github.com/gulpjs/gulp.git#4.0","gulp-jshint":"^2.0.4","jshint":"^2.0.0","jshint-stylish":"^2.2.1","tape":"^4.0.1"},"directories":{"lib":"./lib"},"engines":{"node":">=0.10.0"},"homepage":"https://github.com/theturtle32/WebSocket-Node","keywords":["websocket","websockets","socket","networking","comet","push","RFC-6455","realtime","server","client"],"license":"Apache-2.0","main":"index","name":"websocket","repository":{"type":"git","url":"git+https://github.com/theturtle32/WebSocket-Node.git"},"scripts":{"gulp":"gulp","install":"(node-gyp rebuild 2> builderror.log) || (exit 0)","test":"faucet test/unit"},"version":"1.0.26"}
 
 /***/ })
 /******/ ]);

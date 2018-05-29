@@ -2,17 +2,4 @@
 ~~  TODO
 ~~~~~~~~~~~~
 
-[X] print global vars
-
-[X] test against global vars
-	[X] Allow using global vars
-
-[X] Logic operators > < ==
-
-[X] Ternary operator ?:
-
-[X] Reassignment
-
-* Negation:   -x
-
-* enforce op/function argument count
+(See the casual.pm board)
