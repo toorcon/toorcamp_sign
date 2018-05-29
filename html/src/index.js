@@ -1,3 +1,4 @@
+var $ = require("jquery");
 var _ = require('lodash');
 
 const MAX_CODE_STEPS = 100;
