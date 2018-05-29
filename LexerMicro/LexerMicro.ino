@@ -6,7 +6,7 @@
 
 int led = 13;
 
-// Arduino Uno: 19200 works, 57600 definitely does not
+// Arduino Uno: 19200 baud works, 57600 definitely does not.
 const int BAUD_RATE = 19200;
 
 // the setup routine runs once when you press reset:

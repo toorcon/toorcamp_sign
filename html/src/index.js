@@ -337,7 +337,7 @@ function parseInput(input)
 	$('#steps').html(table + vs);
 
 	if (client) {
-		client.send("Socket test! Wooo");
+		client.send("Socket test! Wooo: " + Math.round(Math.random()));
 	}
 }
 

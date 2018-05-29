@@ -61,7 +61,7 @@
 /******/ 	
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "0edff86f21ff10cc8546"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "7bee7eff9343c34633f0"; // eslint-disable-line no-unused-vars
 /******/ 	var hotRequestTimeout = 10000;
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
@@ -1072,7 +1072,7 @@ function parseInput(input) {
 	$('#steps').html(table + vs);
 
 	if (client) {
-		client.send("Socket test! Wooo");
+		client.send("Socket test! Wooo: " + Math.round(Math.random()));
 	}
 }
 
