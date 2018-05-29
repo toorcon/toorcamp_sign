@@ -3,6 +3,7 @@
 //
 
 #include <stdint.h>
+#include "computer.h"
 
 int led = 13;
 
@@ -15,10 +16,20 @@ void setup() {
 
   // initialize the digital pin as an output.
   pinMode(led, OUTPUT);
+
+	computer_init();
+}
+
+void test_serial_string(String str)
+{
+	for (uint8_t i = 0; i < str.length(); i++) {
+		computer_serial_input(str.charAt(i));
+	}
 }
 
 // the loop routine runs over and over again forever:
 void loop() {
+	/*
 	if (Serial.available()) {
 		uint8_t in = Serial.read();
 
@@ -29,4 +40,12 @@ void loop() {
 			digitalWrite(led, LOW);
 		}
 	}
+	*/
+
+	// Test!
+	test_serial_string("!+3.45,5\n");
+	test_serial_string("\"*v!,3\n");
+	computer_run(2);
+
+	delay(5000);
 }
