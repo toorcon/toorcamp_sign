@@ -1,0 +1,23 @@
+{
+  "name": "lexer",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "webpack && webpack-dev-server"
+  },
+  "author": "zkarcher",
+  "license": "ISC",
+  "dependencies": {
+    "babel-loader": "7.1.4",
+    "clean-webpack-plugin": "0.1.19",
+    "google-closure-compiler-js": "20180506.0.0",
+    "lodash": "4.17.10",
+    "path": "0.12.7",
+    "source-map-loader": "0.2.3",
+    "webpack": "3.11.0",
+    "webpack-cli": "2.0.14",
+    "webpack-dev-server": "2.11.2"
+  },
+  "devDependencies": {}
+}
