@@ -13,7 +13,38 @@ const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
 const ASSIGN_REF = '= += -= *= /= %=';
 
-const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,randi,randRangei,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
+const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
+
+// All operations/functions must be sent as single-char. These are overrides:
+const OP_SERIAL_CHARS = {
+	'<=': '{',
+	'>=': '}',
+	'==': '=',
+	'!=': '!',
+	'ternary': '?',
+	'sin': 'S',
+	'cos': 'C',
+	'tan': 'T',
+	'pow': 'P',
+	'abs': 'a',
+	'atan2': '2',
+	'floor': 'f',
+	'ceil': 'c',
+	'round': 'r',
+	'sqrt': 'Q',
+	'log': 'L',
+	'rand': 'z',
+	'randRange': 'Z',
+	'min': 'm',
+	'max': 'M',
+	'lerp': 'p',
+	'clamp': 'x',
+	'tri': 't',
+	'uni2bi': 'b',
+	'bi2uni': 'u'
+};
+
+// FIXME: check for duplicate chars
 
 const SPECIAL_VARS = {
 	"T": "time, in seconds",
@@ -40,6 +71,10 @@ var steps = [];
 var varNames = {};
 
 var client = null;
+
+function isClientOpen() {
+	return client && (client.readyState === WebSocket.OPEN);
+}
 
 function barf(reason, expr) {
 	var html = '<p class="barf">Error: <b>';
@@ -336,9 +371,52 @@ function parseInput(input)
 
 	$('#steps').html(table + vs);
 
-	if (client) {
-		client.send("Socket test! Wooo: " + Math.round(Math.random()));
+	sendToServer();
+}
+
+function sendToServer()
+{
+	for (var i = 0; i < steps.length; i++) {
+		var line = String.fromCharCode(33 + i);
+
+		var op = steps[i].op;
+		line += (op.length == 1) ? op : OP_SERIAL_CHARS[op];
+
+		var args = _.map(['a','b','c'], function(key){
+			var thing = steps[i][key];
+
+			if (!thing) return 0.0;
+
+			if ((typeof thing) === 'number') return thing.toString();
+
+			var stepMatch = thing.match(/step_(\d+)/);
+			if (stepMatch) {
+				return 'v' + String.fromCharCode(33 + parseInt(stepMatch[1]));
+			}
+
+			var specialMatch = thing.match(/var_([A-Z][A-Z]?)/);
+			if (specialMatch) {
+				return (specialMatch[1] + '_').substr(0, 2);
+			}
+
+			console.warn("Can't handle this arg:", steps[i][key]);
+		});
+
+		// Remove zeros/invalid args at the end
+		while (args.length && (!args[args.length - 1])) {
+			args.pop();
+		}
+
+		line += args.join(',');
+		line += "\n";
+
+		console.log(line);
+
+		if (isClientOpen()) {
+			client.send(line);
+		}
 	}
+
 }
 
 var _lastInput = "";

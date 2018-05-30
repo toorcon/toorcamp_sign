@@ -15,12 +15,12 @@ const socket = new WebSocket.Server({ port: PORT });
 
 socket.on('connection', function connection(ws) {
 	ws.on('message', function incoming(message) {
-		console.log(message);
+		console.log(':::::', message);
 
 		if (port) {
 			port.write(message);
 		} else {
-			console.warn("PORT NOT DEFINED, can't send");
+			console.warn("PORT NOT OPEN, can't send");
 		}
 
 	});
@@ -33,6 +33,10 @@ port = new SerialPort("/dev/cu.usbmodem1421", {
 
 port.on('error', function(err){
 	console.log("port general error:", err);
+});
+
+port.on('data', function (data) {
+  console.log('<<<<<', data);
 });
 
 port.open(function(err){

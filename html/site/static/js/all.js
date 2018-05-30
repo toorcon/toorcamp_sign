@@ -61,7 +61,7 @@
 /******/ 	
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "7bee7eff9343c34633f0"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "bfa5d5eb18b8f85f28ba"; // eslint-disable-line no-unused-vars
 /******/ 	var hotRequestTimeout = 10000;
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
@@ -751,7 +751,36 @@ const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
 const ASSIGN_REF = '= += -= *= /= %=';
 
-const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,randi,randRangei,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
+const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
+
+// All operations/functions must be sent as single-char. These are overrides:
+const OP_SERIAL_CHARS = {
+	'<=': '{',
+	'>=': '}',
+	'==': '=',
+	'!=': '!',
+	'sin': 'S',
+	'cos': 'C',
+	'tan': 'T',
+	'pow': 'P',
+	'abs': 'a',
+	'atan2': '2',
+	'floor': 'f',
+	'ceil': 'c',
+	'round': 'r',
+	'sqrt': 'Q',
+	'log': 'L',
+	'rand': 'z',
+	'randRange': 'Z',
+	'min': 'm',
+	'max': 'M',
+	'lerp': 'p',
+	'clamp': 'x',
+	'tri': 't',
+	'uni2bi': 'b',
+	'bi2uni': 'u',
+	'ternary': '?'
+};
 
 const SPECIAL_VARS = {
 	"T": "time, in seconds",
@@ -1071,9 +1100,30 @@ function parseInput(input) {
 
 	$('#steps').html(table + vs);
 
-	if (client) {
-		client.send("Socket test! Wooo: " + Math.round(Math.random()));
-	}
+	sendToServer();
+}
+
+function sendToServer() {
+	/*
+ if (!client) return;
+ 	for (var i = 0; i < steps.length; i++) {
+ 	var line = String.fromCharCode(33 + i);
+ 		var op = steps[i].op;
+ 	line += (op.length == 1) ? op : OP_SERIAL_CHARS[op];
+ 		var args = _.map(['a','b','c'], function(key){
+ 		var thing = steps[i][key];
+ 		if ((typeof thing) === 'number') return thing.toString();
+ 			if (thing.match())
+ 	});
+ 		// Remove zeros/invalid args at the end
+ 	while (args.length && (!args[args.length - 1])) {
+ 		args.pop();
+ 	}
+ 		line += args.join(',');
+ 	line += "\n";
+ 		client.send(line);
+ }
+ */
 }
 
 var _lastInput = "";
