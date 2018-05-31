@@ -13,7 +13,7 @@ const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
 const ASSIGN_REF = '= += -= *= /= %=';
 
-const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
+const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
 
 // All operations/functions must be sent as single-char. These are overrides:
 const OP_SERIAL_CHARS = {
@@ -31,15 +31,17 @@ const OP_SERIAL_CHARS = {
 	'floor': 'f',
 	'ceil': 'c',
 	'round': 'r',
+	'frac': '.',
 	'sqrt': 'Q',
 	'log': 'L',
+	'logBase': 'B',
 	'rand': 'z',
 	'randRange': 'Z',
 	'min': 'm',
 	'max': 'M',
 	'lerp': 'p',
 	'clamp': 'x',
-	'tri': 't',
+	'tri': '3',
 	'uni2bi': 'b',
 	'bi2uni': 'u'
 };
@@ -59,7 +61,7 @@ const SPECIAL_VARS = {
 	"GA": "global angle (from center of sign)",
 	"LA": "local angle (from center of letter)",
 	"IN": "true if inside letter (hole)",
-	"OUT": "true if outside letter (outer edge)",
+	"OT": "true if outside letter (outer edge)",
 };
 
 // Code will execute in order
@@ -376,8 +378,13 @@ function parseInput(input)
 
 function sendToServer()
 {
+	// Temporarily skip expecution
+	if (isClientOpen()) {
+		client.send("c!\n");
+	}
+
 	for (var i = 0; i < steps.length; i++) {
-		var line = String.fromCharCode(33 + i);
+		var line = 's' + String.fromCharCode(33 + i);
 
 		var op = steps[i].op;
 		line += (op.length == 1) ? op : OP_SERIAL_CHARS[op];
@@ -415,6 +422,11 @@ function sendToServer()
 		if (isClientOpen()) {
 			client.send(line);
 		}
+	}
+
+	// Send the number of steps
+	if (isClientOpen()) {
+		client.send("c" + String.fromCharCode(33 + steps.length) + "\n");
 	}
 
 }

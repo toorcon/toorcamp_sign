@@ -29,23 +29,12 @@ void test_serial_string(String str)
 
 // the loop routine runs over and over again forever:
 void loop() {
-	/*
-	if (Serial.available()) {
-		uint8_t in = Serial.read();
-
-		if (in == '1') {
-			digitalWrite(led, HIGH);
-
-		} else if (in == '0') {
-			digitalWrite(led, LOW);
-		}
-	}
-	*/
-
 	// Test!
-	test_serial_string("!+3.45,5\n");
-	test_serial_string("\"*v!,3\n");
-	computer_run(2);
+	test_serial_string("i0\n");
+	test_serial_string("c2\n");
+	test_serial_string("s!+3.45,5\n");
+	test_serial_string("s\"*v!,3\n");
+	computer_run();
 
 	delay(5000);
 }
