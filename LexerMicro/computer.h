@@ -4,12 +4,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include <Adafruit_NeoPixel.h>
 
 #define MAX_STEPS          (20)
 #define ARG_COUNT          (3)
+#define LED_COUNT          (72)
 
 #define DEBUG_STATE        (false)
-#define SERIAL_PRINT_RUN   (true)
+#define SERIAL_PRINT_RUN   (false)
 
 // Shortcuts for operator functions
 #define f0                 (f(0))
@@ -48,6 +50,7 @@ uint8_t buf[2];
 // Global vars, received as bytes over serial
 uint8_t station_id = 0;
 uint8_t step_count = 0;
+Adafruit_NeoPixel * _strip;
 
 // Special vars, floats set at runtime
 unsigned long lastMillis = 0;
@@ -64,6 +67,7 @@ float vGlobalAngle = 0.0f;
 float vStationAngle = 0.0f;
 float vInside = 0.0f;
 float vOutside = 1.0f;
+uint16_t computeLED = 0;
 
 //
 //  OPERATIONS
@@ -128,6 +132,22 @@ float op_tri() { 	// Triangle wave oscillator
 
 float op_uni2bi() { return (f0 * 2.0f) - 1.0f; }	// unipolar to bipolar
 float op_bi2uni() { return (f0 + 1.0f) * 0.5f; }	// bipolar to unipolar
+
+float op_rgb() {
+	uint8_t r = constrain((int16_t)(f0 * 0xff), 0x0, 0xff);
+	uint8_t g = constrain((int16_t)(f1 * 0xff), 0x0, 0xff);
+	uint8_t b = constrain((int16_t)(f2 * 0xff), 0x0, 0xff);
+
+	// FIXME: Gamma correction?
+
+	_strip->setPixelColor(computeLED, r, g, b);
+
+	return true_f;
+}
+
+float op_hsv() {
+	return false_f;	// FIXME
+}
 
 //
 //  SERIAL INPUT
@@ -255,6 +275,8 @@ void serial_read_op(uint8_t x)
 		case '3': {ops[step_idx] = op_tri; break;}
 		case 'b': {ops[step_idx] = op_uni2bi; break;}
 		case 'u': {ops[step_idx] = op_bi2uni; break;}
+		case '[': {ops[step_idx] = op_rgb; break;}
+		case ']': {ops[step_idx] = op_hsv; break;}
 	}
 
 	current_arg = &args[step_idx][0];
@@ -327,7 +349,7 @@ void serial_arg_read_buf(uint8_t x)
 		// Point to a computed value (from a previous step)
 		case 'v': {current_arg->fp = &values[x - '!']; break;}
 		case 'T': {current_arg->fp = &vTime; break;}
-		case 'L': {current_arg->fp = &vStationID; break;}
+		case 'S': {current_arg->fp = &vStationID; break;}
 
 		case 'I': {
 			if (buf[1] == '_') {
@@ -403,8 +425,9 @@ void serial_wait_for_newline(uint8_t x)
 //  INIT, INPUT
 //
 
-void computer_init() {
+void computer_init(Adafruit_NeoPixel * strip) {
 	serial_fp = serial_line_start;
+	_strip = strip;
 }
 
 void computer_serial_input(uint8_t x)
@@ -423,32 +446,36 @@ void computer_run()
 	float ratioInc = 1.0f / vLEDCount;
 	vGlobalX = 0.0f;
 
-	for (uint8_t s = 0; s < step_count; s++) {
-		compute_arg0 = &args[s][0];
-		values[s] = ops[s]();
+	for (computeLED = 0; computeLED < LED_COUNT; computeLED++) {
 
-		if (SERIAL_PRINT_RUN) {
-			Serial.print(s);
-			Serial.print(": ");
-			Serial.println(values[s]);
-		}
+		for (uint8_t s = 0; s < step_count; s++) {
+			compute_arg0 = &args[s][0];
+			values[s] = ops[s]();
 
-		if (DEBUG_STATE) {
-			Serial.print("ran ");
-			Serial.print(s);
-			Serial.print(": ");
-			Serial.println(values[s]);
-		}
+			if (SERIAL_PRINT_RUN) {
+				Serial.print(s);
+				Serial.print(": ");
+				Serial.println(values[s]);
+			}
+
+			if (DEBUG_STATE) {
+				Serial.print("ran ");
+				Serial.print(s);
+				Serial.print(": ");
+				Serial.println(values[s]);
+			}
+		}	// !for each step
 
 		// Advance the varying floats
 		vLEDIndex += 1.0f;
-		vLEDRatio += ratioinc;
+		vLEDRatio += ratioInc;
 		vGlobalX = vLEDIndex;
-	}
+	}	// !for each LED
 
 	if (DEBUG_STATE) {
 		Serial.println("~~~~~~~~~~~~~~~~~~~~~~~~");
 	}
+
 }
 
 #endif

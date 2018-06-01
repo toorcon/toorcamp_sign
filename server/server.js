@@ -2,12 +2,15 @@
 //  server.js
 //
 
+// FIXME: input from Arduino is:   <<<<< <Buffer 73 74 65 70 3a 20>
+
 const SerialPort = require("serialport");
 const WebSocket = require("ws");
 
 // Arduino Uno: 19200 baud works, 57600 definitely does not.
 const PORT = 8080;
-const BAUD_RATE = 19200;
+const BAUD_RATE = 9600;
+const DEVICE = "/dev/cu.usbmodem1411";
 
 var port = null;
 
@@ -26,7 +29,7 @@ socket.on('connection', function connection(ws) {
 	});
 });
 
-port = new SerialPort("/dev/cu.usbmodem1421", {
+port = new SerialPort(DEVICE, {
 	autoOpen: false,
 	baudRate: BAUD_RATE
 });

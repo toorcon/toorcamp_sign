@@ -2,6 +2,17 @@ const $ = require("jquery");
 const _ = require("lodash");
 const W3CWebSocket = require('websocket').w3cwebsocket;
 
+/*  Parser test
+x = (3 + 1) * 5;
+y = x * x * T;
+y += 2;
+z = atan2(y, x);
+w = sin(cos(z), tan(x * x));
+q = w >= 12.34;
+q10 = q + 10;
+y = q10 ? GA : LA;
+*/
+
 const MAX_CODE_STEPS = 100;
 
 const PORT = 8080;
@@ -13,7 +24,7 @@ const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
 const ASSIGN_REF = '= += -= *= /= %=';
 
-const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
+const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary,rgb,hsv".split(",").sort();
 
 // All operations/functions must be sent as single-char. These are overrides:
 const OP_SERIAL_CHARS = {
@@ -43,14 +54,16 @@ const OP_SERIAL_CHARS = {
 	'clamp': 'x',
 	'tri': '3',
 	'uni2bi': 'b',
-	'bi2uni': 'u'
+	'bi2uni': 'u',
+	'rgb': '[',
+	'hsv': ']'
 };
 
 // FIXME: check for duplicate chars
 
 const SPECIAL_VARS = {
 	"T": "time, in seconds",
-	"L": "letter id: T=0, O=1, O=2, R=3, ...",
+	"S": "station id: T=0, O=1, O=2, R=3, ...",
 	"I": "index of LED on strand",
 	"C": "number of LEDs on strand",
 	"P": "ratio of LED on strand (==I/C)",

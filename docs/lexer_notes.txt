@@ -3,3 +3,17 @@
 ~~~~~~~~~~~~
 
 (See the casual.pm board)
+
+
+
+led = rgb(0.04 * sin(I + T), 0, 0);
+
+
+
+// Red & blue chasers
+red = 1.0 - frac(T + P * 4);
+red *= red * red;
+blue = 1.0 - frac(T + P * 2.7);
+blue *= blue;
+blue *= blue;
+led = rgb(red * 0.1, 0, blue * 0.1);

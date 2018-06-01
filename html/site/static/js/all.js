@@ -61,7 +61,7 @@
 /******/ 	
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "bfa5d5eb18b8f85f28ba"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "173970d38e5eb97a67b9"; // eslint-disable-line no-unused-vars
 /******/ 	var hotRequestTimeout = 10000;
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
@@ -740,6 +740,17 @@ const $ = __webpack_require__(2);
 const _ = __webpack_require__(3);
 const W3CWebSocket = __webpack_require__(6).w3cwebsocket;
 
+/*  Parser test
+x = (3 + 1) * 5;
+y = x * x * T;
+y += 2;
+z = atan2(y, x);
+w = sin(cos(z), tan(x * x));
+q = w >= 12.34;
+q10 = q + 10;
+y = q10 ? GA : LA;
+*/
+
 const MAX_CODE_STEPS = 100;
 
 const PORT = 8080;
@@ -751,7 +762,7 @@ const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
 const ASSIGN_REF = '= += -= *= /= %=';
 
-const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,sqrt,log,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
+const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
 
 // All operations/functions must be sent as single-char. These are overrides:
 const OP_SERIAL_CHARS = {
@@ -759,6 +770,7 @@ const OP_SERIAL_CHARS = {
 	'>=': '}',
 	'==': '=',
 	'!=': '!',
+	'ternary': '?',
 	'sin': 'S',
 	'cos': 'C',
 	'tan': 'T',
@@ -768,19 +780,24 @@ const OP_SERIAL_CHARS = {
 	'floor': 'f',
 	'ceil': 'c',
 	'round': 'r',
+	'frac': '.',
 	'sqrt': 'Q',
 	'log': 'L',
+	'logBase': 'B',
 	'rand': 'z',
 	'randRange': 'Z',
 	'min': 'm',
 	'max': 'M',
 	'lerp': 'p',
 	'clamp': 'x',
-	'tri': 't',
+	'tri': '3',
 	'uni2bi': 'b',
 	'bi2uni': 'u',
-	'ternary': '?'
+	'rgb': '[',
+	'hsv': ']'
 };
+
+// FIXME: check for duplicate chars
 
 const SPECIAL_VARS = {
 	"T": "time, in seconds",
@@ -795,7 +812,7 @@ const SPECIAL_VARS = {
 	"GA": "global angle (from center of sign)",
 	"LA": "local angle (from center of letter)",
 	"IN": "true if inside letter (hole)",
-	"OUT": "true if outside letter (outer edge)"
+	"OT": "true if outside letter (outer edge)"
 };
 
 // Code will execute in order
@@ -807,6 +824,10 @@ var steps = [];
 var varNames = {};
 
 var client = null;
+
+function isClientOpen() {
+	return client && client.readyState === WebSocket.OPEN;
+}
 
 function barf(reason, expr) {
 	var html = '<p class="barf">Error: <b>';
@@ -1104,26 +1125,56 @@ function parseInput(input) {
 }
 
 function sendToServer() {
-	/*
- if (!client) return;
- 	for (var i = 0; i < steps.length; i++) {
- 	var line = String.fromCharCode(33 + i);
- 		var op = steps[i].op;
- 	line += (op.length == 1) ? op : OP_SERIAL_CHARS[op];
- 		var args = _.map(['a','b','c'], function(key){
- 		var thing = steps[i][key];
- 		if ((typeof thing) === 'number') return thing.toString();
- 			if (thing.match())
- 	});
- 		// Remove zeros/invalid args at the end
- 	while (args.length && (!args[args.length - 1])) {
- 		args.pop();
- 	}
- 		line += args.join(',');
- 	line += "\n";
- 		client.send(line);
- }
- */
+	// Temporarily skip expecution
+	if (isClientOpen()) {
+		client.send("c!\n");
+	}
+
+	for (var i = 0; i < steps.length; i++) {
+		var line = 's' + String.fromCharCode(33 + i);
+
+		var op = steps[i].op;
+		line += op.length == 1 ? op : OP_SERIAL_CHARS[op];
+
+		var args = _.map(['a', 'b', 'c'], function (key) {
+			var thing = steps[i][key];
+
+			if (!thing) return 0.0;
+
+			if (typeof thing === 'number') return thing.toString();
+
+			var stepMatch = thing.match(/step_(\d+)/);
+			if (stepMatch) {
+				return 'v' + String.fromCharCode(33 + parseInt(stepMatch[1]));
+			}
+
+			var specialMatch = thing.match(/var_([A-Z][A-Z]?)/);
+			if (specialMatch) {
+				return (specialMatch[1] + '_').substr(0, 2);
+			}
+
+			console.warn("Can't handle this arg:", steps[i][key]);
+		});
+
+		// Remove zeros/invalid args at the end
+		while (args.length && !args[args.length - 1]) {
+			args.pop();
+		}
+
+		line += args.join(',');
+		line += "\n";
+
+		console.log(line);
+
+		if (isClientOpen()) {
+			client.send(line);
+		}
+	}
+
+	// Send the number of steps
+	if (isClientOpen()) {
+		client.send("c" + String.fromCharCode(33 + steps.length) + "\n");
+	}
 }
 
 var _lastInput = "";
