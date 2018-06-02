@@ -114,6 +114,8 @@ function addStep(op, a, b, c) {
 }
 
 function findParenGroup(str, fromIdx) {
+	console.log("findParenGroup:", '"'+str+'"', fromIdx);
+
 	// You can match balanced parens with a regex, but it's a known hard problem.
 	// Here's a simpler way: Count paren pairs.
 	var depth = 0;
@@ -123,7 +125,7 @@ function findParenGroup(str, fromIdx) {
 		if (str[i] === ')') depth--;
 
 		if (depth === 0) {
-			return str.substr(fromIdx, i + 1);
+			return str.substring(fromIdx, i + 1);
 		}
 	}
 
@@ -207,6 +209,7 @@ function parseExpression(e)
 
 			var parenGroup = findParenGroup(e, op.length);
 			if (parenGroup) {
+				console.log("got parenGroup:", parenGroup);
 				var args = splitArgsInParens(parenGroup);
 
 				// Parse the args as expressions
@@ -339,7 +342,7 @@ function parseStatement(statement)
 	}
 
 	var step = parseExpression(right);
-	if (step) {
+	if (((typeof step) === 'number') || step) {
 		console.log("Storing:", name, '=', step);
 		varNames[name] = step;
 		return true;
@@ -352,6 +355,10 @@ function parseInput(input)
 	// reset
 	steps = [];
 	varNames = {};
+
+	// Strip comments
+	input = input.replace(/\/\/.*\n/g, "\n");
+	input = input.replace(/\/\/.*$/g, "");
 
 	var statementAr = input.split(/;+/g);
 	for (var i = 0; i < statementAr.length; i++) {
