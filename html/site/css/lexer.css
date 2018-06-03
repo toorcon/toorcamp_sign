@@ -28,6 +28,18 @@ textarea#input {
 	border: 1px solid #888;
 }
 
+#connectionStatus {
+	width: 100%;
+}
+
+#connectionStatus.notConnected {
+	color: #ff0;
+}
+
+#connectionStatus.connected {
+	color: #0f0;
+}
+
 table {
 	width: 100%;
 }

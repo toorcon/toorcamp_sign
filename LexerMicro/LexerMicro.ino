@@ -16,27 +16,27 @@
 #define UP_TX          (1)
 #define UP_RX          (0)
 
+#define LEVEL_SHIFTER_OE_PIN   (3)
+
 int BLINK_PIN = 13;
+uint8_t frameCount = 0;
 
 int LED_STRIP_PIN = 17;	// Teensy LC
-
 const int ledsPerStrip = 72;
-
 DMAMEM int displayMemory[ledsPerStrip * 6];
 int drawingMemory[ledsPerStrip * 6];
-
 const int config = WS2811_GRB | WS2811_800kHz;
-
 OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 
 // Arduino Uno: 19200 baud works, 57600 definitely does not.
 const int BAUD_RATE = 9600;
 
-uint8_t frameCount = 0;
-
 // the setup routine runs once when you press reset:
 void setup() {
 	Serial.begin(BAUD_RATE);
+
+	pinMode(LEVEL_SHIFTER_OE_PIN, OUTPUT);
+	digitalWrite(LEVEL_SHIFTER_OE_PIN, LOW);
 
 	DOWNSTREAM.setTX(DOWN_TX);
 	DOWNSTREAM.setRX(DOWN_RX);
@@ -52,14 +52,30 @@ void setup() {
 	leds.begin();
 	leds.show();
 
-	//computer_init(&strip);
-	//computer_init(NULL);
+	computer_init(&leds);
 }
 
 void test_serial_string(String str)
 {
 	for (uint8_t i = 0; i < str.length(); i++) {
-		computer_serial_input(str.charAt(i));
+		computer_input_from_upstream(str.charAt(i));
+	}
+}
+
+void input_from_upstream(uint8_t b) {
+	LineResult result = computer_input_from_upstream(b);
+
+	//Serial.println(result);
+
+	if ((result == k_line_ok) || (result == k_line_end)) {
+		// Pass the data along, downstream.
+		DOWNSTREAM.write(b);
+
+	} else if (result == k_line_set_station_id) {
+		// Increment station_id and pass it to next station.
+		DOWNSTREAM.write('i');
+		DOWNSTREAM.write('!' + computer_get_station_id() + 1);
+		DOWNSTREAM.write('\n');
 	}
 }
 
@@ -75,18 +91,24 @@ void loop() {
 	test_serial_string("c#\n");
 	*/
 
-/*
-	// From the laptop/programmer
+	// From Serial: From the laptop/programmer
 	while (Serial.available() > 0) {
 		// read the incoming byte:
 		uint8_t b = Serial.read();
-		computer_serial_input(b);
-
-		// Pass down the line
-		DOWNSTREAM.write(b);
+		input_from_upstream(b);
 	}
 
-	// Slave microcontroller: Receive bytes from upstream
+	// From UPSTREAM: From the microprocessor 1 higher
+	while (UPSTREAM.available() > 0) {
+		// read the incoming byte:
+		uint8_t b = UPSTREAM.read();
+		input_from_upstream(b);
+	}
+
+	// From DOWNSTREAM: other micros can send sensor data
+	// upstream.
+	/*
+	// TODO
 	while (UPSTREAM.available() > 0) {
 		// read the incoming byte:
 		uint8_t b = UPSTREAM.read();
@@ -95,9 +117,9 @@ void loop() {
 		// Pass down the line
 		DOWNSTREAM.write(b);
 	}
+	*/
 
 	computer_run();
-*/
 
 	/*
 	// Hmm.
@@ -107,6 +129,7 @@ void loop() {
 	delay(1000);
 	*/
 
+	/*
 	while (UPSTREAM.available() > 0) {
 		char b = UPSTREAM.read();
 		if (b == '\n') {
@@ -115,6 +138,7 @@ void loop() {
 			Serial.print(b);
 		}
 	}
+	*/
 
 	// Blink to prove we're alive.
 	// Blinks once every 60 frames. If blink rate is >1/sec, frame rate is good!

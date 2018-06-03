@@ -6,9 +6,13 @@
 #include <math.h>
 #include <OctoWS2811.h>
 
+#define MAX_LINE_LEN       (16)
 #define MAX_STEPS          (20)
 #define ARG_COUNT          (3)
 #define LED_COUNT          (72)
+
+#define DEFAULT_GAMMA      (true)
+#define DEFAULT_BRIGHT     (0.2f)
 
 #define DEBUG_STATE        (false)
 #define SERIAL_PRINT_RUN   (false)
@@ -27,6 +31,13 @@
 #define randf()    (random(0xffffff) * (1.0f / 0xffffff))
 #endif
 
+typedef enum {
+	k_line_ok = 0,
+	k_line_end,
+	k_line_do_not_share,
+	k_line_set_station_id
+} LineResult;
+
 typedef struct arg {
 	union {
 		float f;
@@ -35,12 +46,21 @@ typedef struct arg {
 	bool is_fp;
 } Arg;
 
+// Gamma + brightness LUT
+uint8_t lut[256];
+
 // Reference machine (virtual computer instructions)
 float (*ops[MAX_STEPS])();
 Arg args[MAX_STEPS][ARG_COUNT];
 float values[MAX_STEPS];	// Computed values
 
-// Incoming data
+// Incoming data lines
+uint8_t downstreamBuf[MAX_LINE_LEN];
+uint16_t downstreamIdx = 0;
+uint8_t upstreamBuf[MAX_LINE_LEN];
+uint16_t upstreamIdx = 0;
+
+// Incoming data: State machine
 void (*serial_fp)(uint8_t);
 int8_t step_idx = 0;
 Arg * current_arg = NULL;
@@ -140,15 +160,78 @@ float op_rgb() {
 	uint8_t g = constrain((int16_t)(f1 * 0xff), 0x0, 0xff);
 	uint8_t b = constrain((int16_t)(f2 * 0xff), 0x0, 0xff);
 
-	// FIXME: Gamma correction?
-
-	_leds->setPixel(computeLED, r, g, b);
+	_leds->setPixel(computeLED, lut[r], lut[g], lut[b]);
 
 	return true_f;
 }
 
 float op_hsv() {
-	return false_f;	// FIXME
+	float h = f0;
+	//float s = f1;
+	float v = f2;	// top (max) value
+	float p = v * (1.0f - f1);	// bottom (min) value
+
+	uint8_t v8 = constrain((int16_t)(v * 0xff), 0x0, 0xff);
+	uint8_t p8 = constrain((int16_t)(p * 0xff), 0x0, 0xff);
+
+	h -= floor(h);	// wrap inside 0..1
+	float h6 = h * 6.0f;
+	float hRamp = h6 - floor(h6);
+
+	uint8_t h6i = (uint8_t)(h6);	// 0..5
+
+	if (h6i & 0x1) {	// Odds
+		// "Falling" (yellow -> green: R falls, etc)
+		uint8_t q8 = lerp(v8, p8, hRamp);
+
+		if (h6i == 1) {
+			_leds->setPixel(computeLED, lut[q8], lut[v8], lut[p8]);	// yellow -> green
+		} else if (h6i == 3) {
+			_leds->setPixel(computeLED, lut[p8], lut[q8], lut[v8]);	// cyan -> blue
+		} else {
+			_leds->setPixel(computeLED, lut[v8], lut[p8], lut[q8]);	// magenta -> red
+		}
+
+	} else {	// Evens
+		// "Rising" (red -> yellow: G rises, etc)
+		uint8_t t8 = lerp(p8, v8, hRamp);
+
+		if (h6i == 0) {
+			_leds->setPixel(computeLED, lut[v8], lut[t8], lut[p8]);	// red -> yellow
+		} else if (h6i == 2) {
+			_leds->setPixel(computeLED, lut[p8], lut[v8], lut[t8]);	// green -> cyan
+		} else {
+			_leds->setPixel(computeLED, lut[t8], lut[p8], lut[v8]);	// blue -> magenta
+		}
+	}
+
+	return true_f;
+}
+
+uint8_t computer_get_station_id() {
+	return station_id;
+}
+
+void set_gamma_and_brightness(bool isGamma, uint8_t bright) {
+	float raw = 0.0f;
+
+	for (uint16_t i = 0; i < 256; i++) {
+		float v = raw;
+
+		if (isGamma) {
+			//v = pow(v, 2.2f);	// Slow.
+			//v = powf(v, 2.2f);	// Slow also.
+
+			// Fast! TODO: How does it look?
+			float v2 = raw * raw;
+			float v3 = raw * v2;
+			v = lerp(v2, v3, 0.23f);	// Close enough to pow(v, 2.2)!
+		}
+
+		lut[i] = (uint8_t)(round(v * bright));
+
+		raw += (1.0f / 0xff);
+	}
 }
 
 //
@@ -164,30 +247,47 @@ void serial_arg_start(uint8_t x);
 void serial_arg_read_float(uint8_t x);
 void serial_arg_read_buf(uint8_t x);
 void serial_arg_complete(uint8_t x);
+void serial_read_gamma_start(uint8_t x);
+void serial_read_gamma_end(uint8_t x);
 void serial_error();
 void serial_wait_for_newline(uint8_t x);
 
 void serial_line_start(uint8_t x)
 {
 	switch (x) {
+		// Station index
 		case 'i':
 		{
-			// Station index
 			serial_fp = serial_read_station_id;
 		}
 		break;
 
+		// Count: number of steps
 		case 'c':
 		{
-			// Count: number of steps
 			serial_fp = serial_read_step_count;
 		}
 		break;
 
+		// Step instruction
 		case 's':
 		{
-			// Step instruction
 			serial_fp = serial_read_step_number;
+		}
+		break;
+
+		// Reset time
+		case 't':
+		{
+			vTime = 0.0f;
+			serial_fp = serial_wait_for_newline;
+		}
+		break;
+
+		// Gamma/brightness
+		case 'g':
+		{
+			serial_fp = serial_read_gamma_start;
 		}
 		break;
 
@@ -412,6 +512,35 @@ void serial_arg_complete(uint8_t x)
 	}
 }
 
+// Gamma + brightness:
+// 0bx1xxxGBB 0bx1BBBBBB
+void serial_read_gamma_start(uint8_t x) {
+	if (x == '\n') {
+		serial_fp = serial_line_start;
+		return;
+	}
+
+	buf[0] = x;
+	serial_fp = serial_read_gamma_end;
+}
+
+void serial_read_gamma_end(uint8_t x) {
+	if (x == '\n') {
+		serial_fp = serial_line_start;
+		return;
+	}
+
+	buf[1] = x;
+
+	bool isGamma = buf[0] & 0b100;
+	uint8_t bright = ((buf[0] & 0x03) << 6) | (buf[1] & 0x3f);
+	//float bright_f = bright * (1.0f / 0xff);
+
+	set_gamma_and_brightness(isGamma, bright);
+
+	serial_fp = serial_wait_for_newline;
+}
+
 void serial_error() {
 	serial_fp = serial_wait_for_newline;
 }
@@ -428,13 +557,73 @@ void serial_wait_for_newline(uint8_t x)
 //
 
 void computer_init(OctoWS2811 * inLEDs) {
+	set_gamma_and_brightness(DEFAULT_GAMMA, DEFAULT_BRIGHT);
 	serial_fp = serial_line_start;
 	_leds = inLEDs;
 }
 
-void computer_serial_input(uint8_t x)
+LineResult _input_from_stream(uint8_t * buf, uint16_t * idx, uint8_t c) {
+	LineResult result = k_line_ok;
+
+	// Room to store this?
+	if ((*idx) < MAX_LINE_LEN) {
+		buf[*idx] = c;
+	}
+
+	// Advance to next character (line length is longer)
+	(*idx)++;
+
+	// Do not share station IDs. We'll construct our
+	// own message (for downstream machines) after
+	// the station_id is set.
+	if (buf[0] == 'i') {
+		result = k_line_do_not_share;
+	}
+
+	// End of line?
+	if (c == '\n') {
+
+		result = k_line_end;
+
+		// Valid line length?
+		if ((*idx) <= MAX_LINE_LEN) {
+
+			// Process this line, one byte at a time
+			for (uint8_t i = 0; i < (*idx); i++) {
+				// State machine (function pointer)
+				serial_fp(buf[i]);
+			}
+
+			// Station ID?
+			if (buf[0] == 'i') {
+				result = k_line_set_station_id;
+			}
+		}
+	}
+
+	return result;
+}
+
+LineResult computer_input_from_upstream(uint8_t x)
 {
-	serial_fp(x);
+	LineResult result = _input_from_stream(upstreamBuf, &upstreamIdx, x);
+
+	if ((result == k_line_end) || (result == k_line_set_station_id)) {
+		upstreamIdx = 0;
+	}
+
+	return result;
+}
+
+LineResult computer_input_from_downstream(uint8_t x)
+{
+	LineResult result = _input_from_stream(downstreamBuf, &downstreamIdx, x);
+
+	if ((result == k_line_end) || (result == k_line_set_station_id)) {
+		downstreamIdx = 0;
+	}
+
+	return result;
 }
 
 void computer_run()

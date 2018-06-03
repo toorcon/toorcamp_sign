@@ -18,7 +18,20 @@
 		</table>
 
 		<div id="port">
-			<button>Open Port</button>
+			<input type="checkbox" id="sendEnabled" checked />
+			<label for="sendEnabled">Send enabled</label>
+
+			<button id="resetTime">(T) Reset time</button>
+
+			<input type="checkbox" id="isGamma" />
+			<label for="isGamma">Gamma correction</label>
+
+			<input type="range" min="0" max="255" value="51" class="slider" id="bright" />
+			<label for="bright">Brightness</label>
+		</div>
+
+		<div id="connectionStatus" class="notConnected">
+			Not connected
 		</div>
 
 		<table>

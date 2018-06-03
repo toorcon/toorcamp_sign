@@ -14,8 +14,9 @@ y = q10 ? GA : LA;
 */
 
 const MAX_CODE_STEPS = 100;
-
+const AUTO_PARSE_INTERVAL_MS = 500;
 const PORT = 8080;
+const RECONNECT_INTERVAL_MS = 2000;
 
 // In order of precedence
 const OPERATORS = "*,/,%,+,-,<,<=,>,>=,==,!=,?,:".split(",");
@@ -24,40 +25,46 @@ const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
 const ASSIGN_REF = '= += -= *= /= %=';
 
-const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary,rgb,hsv".split(",").sort();
+const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,u2b,b2u,ternary,rgb,hsv".split(",").sort();
 
 // All operations/functions must be sent as single-char. These are overrides:
-const OP_SERIAL_CHARS = {
-	'<=': '{',
-	'>=': '}',
-	'==': '=',
-	'!=': '!',
-	'ternary': '?',
-	'sin': 'S',
-	'cos': 'C',
-	'tan': 'T',
-	'pow': 'P',
-	'abs': 'a',
-	'atan2': '2',
-	'floor': 'f',
-	'ceil': 'c',
-	'round': 'r',
-	'frac': '.',
-	'sqrt': 'Q',
-	'log': 'L',
-	'logBase': 'B',
-	'rand': 'z',
-	'randRange': 'Z',
-	'min': 'm',
-	'max': 'M',
-	'lerp': 'p',
-	'clamp': 'x',
-	'tri': '3',
-	'uni2bi': 'b',
-	'bi2uni': 'u',
-	'rgb': '[',
-	'hsv': ']'
-};
+const OPS = [
+	{name: '<=',        args: 2, code: '{'},
+	{name: '>=',        args: 2, code: '}'},
+	{name: '==',        args: 2, code: '='},
+	{name: '!=',        args: 2, code: '!'},
+	{name: 'ternary',   args: 3, code: '?'},
+	{name: 'sin',       args: 1, code: 'S'},
+	{name: 'cos',       args: 1, code: 'C'},
+	{name: 'tan',       args: 1, code: 'T'},
+	{name: 'pow',       args: 2, code: 'P'},
+	{name: 'abs',       args: 1, code: 'a'},
+	{name: 'atan2',     args: 2, code: '2'},
+	{name: 'floor',     args: 1, code: 'f'},
+	{name: 'ceil',      args: 1, code: 'c'},
+	{name: 'round',     args: 1, code: 'r'},
+	{name: 'frac',      args: 1, code: '.'},
+	{name: 'sqrt',      args: 1, code: 'Q'},
+	{name: 'log',       args: 1, code: 'L'},
+	{name: 'logBase',   args: 2, code: 'B'},
+	{name: 'rand',      args: 1, code: 'z'},
+	{name: 'randRange', args: 2, code: 'Z'},
+	{name: 'min',       args: 2, code: 'm'},
+	{name: 'max',       args: 2, code: 'M'},
+	{name: 'lerp',      args: 3, code: 'p'},
+	{name: 'clamp',     args: 3, code: 'x'},
+	{name: 'tri',       args: 1, code: '3'},
+	{name: 'u2b',       args: 1, code: 'b'},	// uni to bi
+	{name: 'b2u',       args: 1, code: 'u'},	// bi to uni
+	{name: 'rgb',       args: 3, code: '['},
+	{name: 'hsv',       args: 3, code: ']'}
+];
+
+function opWithName(name) {
+	return _.find(OPS, function(op){
+		return op.name == name;
+	});
+}
 
 // FIXME: check for duplicate chars
 
@@ -89,6 +96,11 @@ var client = null;
 
 function isClientOpen() {
 	return client && (client.readyState === WebSocket.OPEN);
+}
+
+function isClientAvailable() {
+	if (!$('#sendEnabled').get(0).checked) return false;
+	return isClientOpen();
 }
 
 function barf(reason, expr) {
@@ -142,7 +154,7 @@ function splitArgsInParens(str) {
 		if (str[i] === ')') depth--;
 
 		// Add the characters
-		if ((depth > 0) && (str[i] !== ',')) {
+		if (((depth === 1) && (str[i] !== ',')) || (depth >= 2)) {
 			args[args.length - 1] += str[i];
 		}
 
@@ -211,6 +223,21 @@ function parseExpression(e)
 			if (parenGroup) {
 				console.log("got parenGroup:", parenGroup);
 				var args = splitArgsInParens(parenGroup);
+
+				// Enforce correct number of arguments
+				var opObj = opWithName(op);
+				var correctArgs = opObj['args'];
+
+				// Arg count mismatch?
+				if (args.length !== correctArgs) {
+
+					function pluralize(str, count) {
+						return str + ((count === 1) ? "" : "s");
+					}
+
+					barf(op + "(): expected <b>" + correctArgs + "</b> " + pluralize("arg", correctArgs) + ", got <b>" + args.length + "</b>", args);
+					return;
+				}
 
 				// Parse the args as expressions
 				var argTokens = _.map(args, function(arg){
@@ -404,7 +431,7 @@ function parseInput(input)
 function sendToServer()
 {
 	// Temporarily skip expecution
-	if (isClientOpen()) {
+	if (isClientAvailable()) {
 		client.send("c!\n");
 	}
 
@@ -412,7 +439,7 @@ function sendToServer()
 		var line = 's' + String.fromCharCode(33 + i);
 
 		var op = steps[i].op;
-		line += (op.length == 1) ? op : OP_SERIAL_CHARS[op];
+		line += (op.length == 1) ? op : opWithName(op)['code'];
 
 		var args = _.map(['a','b','c'], function(key){
 			var thing = steps[i][key];
@@ -444,13 +471,13 @@ function sendToServer()
 
 		console.log(line);
 
-		if (isClientOpen()) {
+		if (isClientAvailable()) {
 			client.send(line);
 		}
 	}
 
 	// Send the number of steps
-	if (isClientOpen()) {
+	if (isClientAvailable()) {
 		client.send("c" + String.fromCharCode(33 + steps.length) + "\n");
 	}
 
@@ -459,29 +486,80 @@ function sendToServer()
 var _lastInput = "";
 function tryParseAgain()
 {
+	if (!isClientAvailable()) {
+		return;
+	}
+
 	var input = $('#input').val();
 	if (input === _lastInput) return;
 	_lastInput = input;
 	parseInput(input);
 }
 
-function portButtonClick(event) {
-	console.log("portButtonClick()");
+function sendEnabledChange(event) {
+	// Send enabled? Immediately send state
+	if (isClientAvailable()) {
+		gammaBrightChange(null);
+
+		// tryParseAgain() will kick in every 250ms or so..
+	}
+}
+
+function resetTimeClick(event) {
+	if (isClientAvailable()) {
+		client.send("t\n");
+	}
+}
+
+// Gamma + brightness:
+// 0bx1xxxGBB 0bx1BBBBBB
+function gammaBrightChange(event) {
+	var isGamma = $('#isGamma').get(0).checked;
+	var bright8 = parseInt($('#bright').val());
+
+	var b0 = 0x40 | (isGamma ? 0x04 : 0) | (bright8 >> 6);
+	var b1 = 0x40 | bright8 & 0x3f;
+
+	var msg = 'g' + String.fromCharCode(b0) + String.fromCharCode(b1) + "\n";
+
+	if (isClientAvailable()) {
+		client.send(msg);
+	}
+}
+
+function showConnectionStatus(b) {
+	$('#connectionStatus')
+		.text(b ? "Connected" : "Not connected")
+		.toggleClass("connected", b)
+		.toggleClass("notConnected", !b)
+	;
 }
 
 function startSocket() {
 	client = new W3CWebSocket('ws://localhost:8080/', 'echo-protocol');
 
+	/*
+	if (client) {
+		client.close();
+	}
+	*/
+
 	client.onerror = function() {
-		console.log('Connection Error');
+		//console.log('Connection Error');
+		showConnectionStatus(false);
 	};
 
 	client.onopen = function() {
 		console.log('WebSocket Client Connected');
+		showConnectionStatus(true);
 	};
 
 	client.onclose = function() {
-		console.log('echo-protocol Client Closed');
+		console.log('echo-protocol Client Closed. Will try reconnecting in ' + RECONNECT_INTERVAL_MS + ' ms...');
+		showConnectionStatus(false);
+
+		client = null;
+		setTimeout(startSocket, RECONNECT_INTERVAL_MS);
 	};
 
 	client.onmessage = function(e) {
@@ -489,6 +567,14 @@ function startSocket() {
 			console.log("Received: '" + e.data + "'");
 		}
 	};
+}
+
+function sendStationID() {
+	if (isClientAvailable()) {
+		client.send("i!\n");
+	}
+
+	setTimeout(sendStationID, 5000);
 }
 
 $(document).ready(function(){
@@ -502,9 +588,15 @@ $(document).ready(function(){
 	}).join('<br/>') + '</p>';
 	$('#ref').html(ref);
 
-	$('#port button').on('click', portButtonClick);
+	// Controls
+	$('#sendEnabled').on('change', sendEnabledChange);
+	$('#resetTime').on('click', resetTimeClick);
+	$('#isGamma').on('change', gammaBrightChange);
+	$('#bright').on('input', gammaBrightChange);
 
 	startSocket();
 
-	setInterval(tryParseAgain, 500);
+	setInterval(tryParseAgain, AUTO_PARSE_INTERVAL_MS);
+
+	sendStationID();
 });

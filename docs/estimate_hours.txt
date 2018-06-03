@@ -1,0 +1,14 @@
+- Serial communication == RS232 ??? [6 hours]
+- Wire LED strips [4 hours]
+- Attach LED strips, sensors [8 hours]
+- Which sensor? Ultrasonic? [2 hours]
+
+- Programming: Serial(?), can this be bi-directional? [4 hours]
+- Programming: 1st micro is the leader, can configure the others
+- Programming: Animations [24 hours]
+
+- Interactivity: Ultrasonic Distance sensors? Mic + FFT? [4 hours]
+
+
+
+Estimated labor, hours: [52 hours]

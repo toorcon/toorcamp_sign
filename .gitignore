@@ -1,1 +1,3 @@
+docs/*.pdf
+docs/private/*
 html/node_modules/**/.bin/*

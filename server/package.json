@@ -10,6 +10,7 @@
   "author": "zkarcher",
   "license": "ISC",
   "dependencies": {
+    "lodash": "4.17.10",
     "serialport": "6.2.0",
     "ws": "5.2.0"
   }

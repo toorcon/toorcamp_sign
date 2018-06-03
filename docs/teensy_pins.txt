@@ -1,0 +1,50 @@
+$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$$   OctoWS2811 Adapter
+$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+ 0:   RX1
+ 1:   TX1
+
+TRIG, ECHO: Any of these (just pick two, and be consistent):
+// 22 & 23 have PWM, might want to use those somewhere else?
+17, 18, 19, 22, 23
+
+
+
+
+
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XX          Backup strategy:
+XX   Soldering wires onto Teensy pins :(
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+Solder headers on:
+Upper row:  ALL PINS
+Lower row:  GND, 0-8.   *Not* 9-12.
+
+ 9:   RX2
+10:   TX2
+11:   TRIG  (ultrasonic, HCSR04)
+12:   ECHO  (ultrasonic, HCSR04)
+
+
+
+
+
+
+Teensy pins! Need the following:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* OctoWS2811 library pins. These are:
+   1-4:    2, 7,  8, 14
+	 5-8:    5, 6, 20, 21
+
+* Serial RX
+	Serial1:   0, 21
+	Serial2:   9, 26
+	Serial3:   7,  8
+
+* Serial TX
+  Serial1:   1,  5
+	Serial2:  10, 31

@@ -2,7 +2,93 @@
 ~~  TODO
 ~~~~~~~~~~~~
 
+Lexer tasks:
 (See the casual.pm board)
+
+
+
+
+-- Buy local?:
+
+	- Screws (for LED units)
+
+	- Extension cords (get some for the house)
+
+		- Figure out what I need
+
+
+
+
+Ordering:
+---------
+
+Digikey
+~~~~~~~
+X Logic level shifter
+- CAT6 cables
+- Electric plugs
+- Communication boards (MAX490, full duplex)
+- Header Pins
+- 4-pin Connectors (RJ45)
+- CAT5e cables
+- Proto boards
+- Breadboard (for setup)
+- 5V power supplies
+- Wire
+
+
+- Teensy -> MAX490
+		AWG 22 solid, 4-8 colors
+- Power supply -> OctoWS2811
+		AWG 18 ? 16? stranded
+		red, black
+
+
+
+***************
+**  ORDERED!
+***************
+
+PJRC
+~~~~
+- Teensy 3.2 x 10 !
+- Octo breakout boards
+
+Amazon
+~~~~~~
+- USB hub with switches (For testing
+- USB cables (for multiple Teensys)
+- Ultrasonic Sensors (with breakout boards)
+
+
+
+*************
+**  LEDs
+*************
+
+T = 63
+O = 108
+O = 108
+R = 102
+C = 81
+A = 108
+M = 147
+P = 90
+
+Total modules: 807
+
+
+
+
+
+
+Power:
+12VDC power, 0.72W
+
+'M' is 105.84 Watts, or 8.82 amps
+
+
+
 
 
 
