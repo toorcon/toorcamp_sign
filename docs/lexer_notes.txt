@@ -5,6 +5,20 @@
 (See the casual.pm board)
 
 
+
+>>>>>>>>>>>>>
+>>  SERIAL
+>>>>>>>>>>>>>
+
+Down the line (higher stations:)
+Serial2
+    RX 9, TX 10
+
+Up the line (lower stations:)
+Serial1
+		RX 0, TX 1
+
+
 led = rgb(0.04 * sin(I + T), 0, 0);
 
 

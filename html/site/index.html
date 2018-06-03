@@ -7,20 +7,29 @@
 	</head>
 
 	<body>
-		<textarea id="input"></textarea>
+		<table>
+			<tr>
+				<td width="66%">
+					<textarea id="input"></textarea>
+				</td>
+				<td id="status" valign="top">
+				</td>
+			</tr>
+		</table>
+
+		<div id="port">
+			<button>Open Port</button>
+		</div>
+
+		<table>
+			<tr>
+				<td width="50%" id="ref" valign="top"></td>
+				<td width="50%" id="steps" valign="top"></td>
+			</tr>
+		</table>
+
+		<script type="text/javascript" src="./static/js/all.js"></script>
+
 	</body>
-
-	<div id="port">
-		<button>Open Port</button>
-	</div>
-
-	<table>
-		<tr>
-			<td width="50%" id="ref" valign="top"></td>
-			<td width="50%" id="steps" valign="top"></td>
-		</tr>
-	</table>
-
-	<script type="text/javascript" src="./static/js/all.js"></script>
 
 </html>

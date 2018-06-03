@@ -10,7 +10,7 @@ const WebSocket = require("ws");
 // Arduino Uno: 19200 baud works, 57600 definitely does not.
 const PORT = 8080;
 const BAUD_RATE = 9600;
-const DEVICE = "/dev/cu.usbmodem1411";
+const DEVICE = "/dev/cu.usbmodem4399551";
 
 var port = null;
 

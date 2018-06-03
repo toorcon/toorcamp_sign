@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
-#include <Adafruit_NeoPixel.h>
+#include <OctoWS2811.h>
 
 #define MAX_STEPS          (20)
 #define ARG_COUNT          (3)
@@ -50,7 +50,7 @@ uint8_t buf[2];
 // Global vars, received as bytes over serial
 uint8_t station_id = 0;
 uint8_t step_count = 0;
-Adafruit_NeoPixel * _strip;
+OctoWS2811 * _leds;
 
 // Special vars, floats set at runtime
 unsigned long lastMillis = 0;
@@ -104,19 +104,21 @@ float op_ternary() { return (f0 != 0.0f) ? f1 : f2; }
 
 // Functions
 
-float op_sin() { return sinf(f0); }
-float op_cos() { return cosf(f0); }
-float op_tan() { return tanf(f0); }
-float op_pow() { return powf(f0, f1); }
-float op_abs() { return fabsf(f0); }
-float op_atan2() { return atan2f(f0, f1); }
-float op_floor() { return floorf(f0); }
-float op_ceil() { return ceilf(f0); }
-float op_round() { return roundf(f0); }
-float op_frac() { float cachef0 = f0; return cachef0 - floorf(cachef0); }
-float op_sqrt() { return sqrtf(f0); }
-float op_log() { return logf(f0); }
-float op_logBase() { return logf(f0) / logf(f1); }
+// Teensy LC: The __f versions of trig functions "should" be faster... right?
+//            But they're definitely performing slower, for me.
+float op_sin() { return sin(f0); }
+float op_cos() { return cos(f0); }
+float op_tan() { return tan(f0); }
+float op_pow() { return pow(f0, f1); }
+float op_abs() { return fabs(f0); }
+float op_atan2() { return atan2(f0, f1); }
+float op_floor() { return floor(f0); }
+float op_ceil() { return ceil(f0); }
+float op_round() { return round(f0); }
+float op_frac() { float cachef0 = f0; return cachef0 - floor(cachef0); }
+float op_sqrt() { return sqrt(f0); }
+float op_log() { return log(f0); }
+float op_logBase() { return log(f0) / log(f1); }
 float op_rand() { return randf(); }
 float op_randRange() { float cachef0 = f0; return cachef0 + (f1 - cachef0) * randf(); }
 float op_min() { return min(f0, f1); }
@@ -126,7 +128,7 @@ float op_clamp() { return constrain(f0, f1, f2); }
 
 float op_tri() { 	// Triangle wave oscillator
 	float cachef0 = f0;
-	float r = cachef0 - floorf(cachef0);	// remainder
+	float r = cachef0 - floor(cachef0);	// remainder
 	return ((r < 0.5f) ? (r) : (1.0f - r)) * 2.0f;
 }
 
@@ -140,7 +142,7 @@ float op_rgb() {
 
 	// FIXME: Gamma correction?
 
-	_strip->setPixelColor(computeLED, r, g, b);
+	_leds->setPixel(computeLED, r, g, b);
 
 	return true_f;
 }
@@ -425,9 +427,9 @@ void serial_wait_for_newline(uint8_t x)
 //  INIT, INPUT
 //
 
-void computer_init(Adafruit_NeoPixel * strip) {
+void computer_init(OctoWS2811 * inLEDs) {
 	serial_fp = serial_line_start;
-	_strip = strip;
+	_leds = inLEDs;
 }
 
 void computer_serial_input(uint8_t x)

@@ -61,7 +61,7 @@
 /******/ 	
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "173970d38e5eb97a67b9"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "496cde1df38098a530c4"; // eslint-disable-line no-unused-vars
 /******/ 	var hotRequestTimeout = 10000;
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
@@ -762,7 +762,7 @@ const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
 const ASSIGN_REF = '= += -= *= /= %=';
 
-const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary".split(",").sort();
+const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,uni2bi,bi2uni,ternary,rgb,hsv".split(",").sort();
 
 // All operations/functions must be sent as single-char. These are overrides:
 const OP_SERIAL_CHARS = {
@@ -801,7 +801,7 @@ const OP_SERIAL_CHARS = {
 
 const SPECIAL_VARS = {
 	"T": "time, in seconds",
-	"L": "letter id: T=0, O=1, O=2, R=3, ...",
+	"S": "station id: T=0, O=1, O=2, R=3, ...",
 	"I": "index of LED on strand",
 	"C": "number of LEDs on strand",
 	"P": "ratio of LED on strand (==I/C)",
@@ -833,7 +833,7 @@ function barf(reason, expr) {
 	var html = '<p class="barf">Error: <b>';
 	html += reason + '</b></p>';
 	html += '<blockquote class="barf">' + expr + '</blockquote>';
-	$('#steps').html(html);
+	$('#status').html(html);
 
 	console.warn(reason, expr);
 }
@@ -852,6 +852,8 @@ function addStep(op, a, b, c) {
 }
 
 function findParenGroup(str, fromIdx) {
+	console.log("findParenGroup:", '"' + str + '"', fromIdx);
+
 	// You can match balanced parens with a regex, but it's a known hard problem.
 	// Here's a simpler way: Count paren pairs.
 	var depth = 0;
@@ -861,7 +863,7 @@ function findParenGroup(str, fromIdx) {
 		if (str[i] === ')') depth--;
 
 		if (depth === 0) {
-			return str.substr(fromIdx, i + 1);
+			return str.substring(fromIdx, i + 1);
 		}
 	}
 
@@ -946,6 +948,7 @@ function parseExpression(e) {
 
 			var parenGroup = findParenGroup(e, op.length);
 			if (parenGroup) {
+				console.log("got parenGroup:", parenGroup);
 				var args = splitArgsInParens(parenGroup);
 
 				// Parse the args as expressions
@@ -1075,7 +1078,7 @@ function parseStatement(statement) {
 	}
 
 	var step = parseExpression(right);
-	if (step) {
+	if (typeof step === 'number' || step) {
 		console.log("Storing:", name, '=', step);
 		varNames[name] = step;
 		return true;
@@ -1088,10 +1091,17 @@ function parseInput(input) {
 	steps = [];
 	varNames = {};
 
+	// Strip comments
+	input = input.replace(/\/\/.*\n/g, "\n");
+	input = input.replace(/\/\/.*$/g, "");
+
 	var statementAr = input.split(/;+/g);
 	for (var i = 0; i < statementAr.length; i++) {
 		var success = parseStatement(statementAr[i]);
-		if (!success) return;
+		if (!success) {
+			$('#steps').css('opacity', 0.4);
+			return;
+		}
 	}
 
 	// Show the steps
@@ -1120,6 +1130,8 @@ function parseInput(input) {
 	vs += '</p>';
 
 	$('#steps').html(table + vs);
+	$('#steps').css('opacity', 1.0);
+	$('#status').html(""); // clear errors
 
 	sendToServer();
 }

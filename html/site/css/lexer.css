@@ -28,6 +28,14 @@ textarea#input {
 	border: 1px solid #888;
 }
 
+table {
+	width: 100%;
+}
+
+#status {
+	padding-left: 15px;
+}
+
 td {
 	padding-top: 24pt;
 }

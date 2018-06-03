@@ -95,7 +95,7 @@ function barf(reason, expr) {
 	var html = '<p class="barf">Error: <b>';
 	html += reason + '</b></p>';
 	html += '<blockquote class="barf">' + expr + '</blockquote>';
-	$('#steps').html(html);
+	$('#status').html(html);
 
 	console.warn(reason, expr);
 }
@@ -363,7 +363,10 @@ function parseInput(input)
 	var statementAr = input.split(/;+/g);
 	for (var i = 0; i < statementAr.length; i++) {
 		var success = parseStatement(statementAr[i]);
-		if (!success) return;
+		if (!success) {
+			$('#steps').css('opacity', 0.4);
+			return;
+		}
 	}
 
 	// Show the steps
@@ -392,6 +395,8 @@ function parseInput(input)
 	vs += '</p>';
 
 	$('#steps').html(table + vs);
+	$('#steps').css('opacity', 1.0);
+	$('#status').html("");	// clear errors
 
 	sendToServer();
 }
