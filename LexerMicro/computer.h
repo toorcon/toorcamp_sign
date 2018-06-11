@@ -6,9 +6,10 @@
 #include <math.h>
 #include <OctoWS2811.h>
 
-#define MAX_LINE_LEN       (16)
+#define MAX_LINE_LEN       (32)
 #define MAX_STEPS          (20)
 #define ARG_COUNT          (3)
+#define STATION_COUNT      (3)
 #define LED_COUNT          (72)
 
 #define DEFAULT_GAMMA      (true)
@@ -33,10 +34,17 @@
 
 typedef enum {
 	k_line_ok = 0,
+	k_line_first_byte,
 	k_line_end,
-	k_line_do_not_share,
-	k_line_set_station_id
+	k_line_do_not_share
 } LineResult;
+
+typedef enum {
+	k_blink_off = 0,
+	k_blink_on = 1,
+	k_blink_60th_frame = 2,
+	k_blink_station_id = 3
+} BlinkType;
 
 typedef struct arg {
 	union {
@@ -48,6 +56,7 @@ typedef struct arg {
 
 // Gamma + brightness LUT
 uint8_t lut[256];
+BlinkType blink_type = k_blink_60th_frame;
 
 // Reference machine (virtual computer instructions)
 float (*ops[MAX_STEPS])();
@@ -55,10 +64,16 @@ Arg args[MAX_STEPS][ARG_COUNT];
 float values[MAX_STEPS];	// Computed values
 
 // Incoming data lines
-uint8_t downstreamBuf[MAX_LINE_LEN];
-uint16_t downstreamIdx = 0;
+
+// Data from upstream, heading down
 uint8_t upstreamBuf[MAX_LINE_LEN];
 uint16_t upstreamIdx = 0;
+
+/*
+// Data from downstream, heading up
+uint8_t downstreamBuf[MAX_LINE_LEN];
+uint16_t downstreamIdx = 0;
+*/
 
 // Incoming data: State machine
 void (*serial_fp)(uint8_t);
@@ -90,6 +105,25 @@ float vOutside = 1.0f;
 uint16_t computeLED = 0;
 
 //
+//  FORWARD DECLARATIONS for state machine
+//
+
+void serial_line_start(uint8_t x);
+void serial_read_data_type(uint8_t x);
+void serial_read_step_count(uint8_t x);
+void serial_read_step_number(uint8_t x);
+void serial_read_op(uint8_t x);
+void serial_arg_start(uint8_t x);
+void serial_arg_read_float(uint8_t x);
+void serial_arg_read_buf(uint8_t x);
+void serial_arg_complete(uint8_t x);
+void serial_read_gamma_start(uint8_t x);
+void serial_read_gamma_end(uint8_t x);
+void serial_read_blink(uint8_t x);
+void serial_error();
+void serial_wait_for_newline(uint8_t x);
+
+//
 //  OPERATIONS
 //
 
@@ -106,12 +140,17 @@ float op_subtract() { return f0 - f1; }
 float op_multiply() { return f0 * f1; }
 float op_divide() { return f0 / f1; }
 
-float op_modulus() {
-	//return fmodf(f0, f1); // No. Behaves unintuitively with negatie values.
-	float cachef0 = f0;
-	float cachef1 = f1;
-	float wholes = floorf(cachef0 / cachef1);
-	return cachef0 - (wholes * cachef1);
+// Modulus ? Remainder ?
+// My implementation of '%' expects a positive divisor (f1),
+// and returns _positive_ values when dividend (f0)
+// is negative, contiguous with the sawtooth-shaped output
+// when dividend is positive.   Example: -1 % 3 = 2.
+// Deal with it  [*sunglasses*]
+
+float op_mod() {
+	float v = f0;	// cache
+	float window = f1;	// cache
+	return v - floor(v / window) * window;
 }
 
 float op_gt() { return (f0 > f1) ? true_f : false_f; }
@@ -132,10 +171,13 @@ float op_tan() { return tan(f0); }
 float op_pow() { return pow(f0, f1); }
 float op_abs() { return fabs(f0); }
 float op_atan2() { return atan2(f0, f1); }
+
 float op_floor() { return floor(f0); }
 float op_ceil() { return ceil(f0); }
 float op_round() { return round(f0); }
+
 float op_frac() { float cachef0 = f0; return cachef0 - floor(cachef0); }
+
 float op_sqrt() { return sqrt(f0); }
 float op_log() { return log(f0); }
 float op_logBase() { return log(f0) / log(f1); }
@@ -238,30 +280,20 @@ void set_gamma_and_brightness(bool isGamma, uint8_t bright) {
 //  SERIAL INPUT
 //
 
-void serial_line_start(uint8_t x);
-void serial_read_station_id(uint8_t x);
-void serial_read_step_count(uint8_t x);
-void serial_read_step_number(uint8_t x);
-void serial_read_op(uint8_t x);
-void serial_arg_start(uint8_t x);
-void serial_arg_read_float(uint8_t x);
-void serial_arg_read_buf(uint8_t x);
-void serial_arg_complete(uint8_t x);
-void serial_read_gamma_start(uint8_t x);
-void serial_read_gamma_end(uint8_t x);
-void serial_error();
-void serial_wait_for_newline(uint8_t x);
-
 void serial_line_start(uint8_t x)
 {
-	switch (x) {
-		// Station index
-		case 'i':
-		{
-			serial_fp = serial_read_station_id;
-		}
-		break;
+	// x must be between '0' and '7'
+	if ((x < '0') || ('7' < x)) {
+		serial_error();
+		return;
+	}
 
+	serial_fp = serial_read_data_type;
+}
+
+void serial_read_data_type(uint8_t x)
+{
+	switch (x) {
 		// Count: number of steps
 		case 'c':
 		{
@@ -291,18 +323,28 @@ void serial_line_start(uint8_t x)
 		}
 		break;
 
+		// Station ID
+		case 'i':
+		{
+			// Infer station_if from buf[0]
+			station_id = (STATION_COUNT - 1) - (upstreamBuf[0] - '0');
+			vStationID = (float)station_id;
+			serial_fp = serial_wait_for_newline;
+		}
+		break;
+
+		case 'b':
+		{
+			serial_fp = serial_read_blink;
+		}
+		break;
+
 		default:
 		{
 			serial_error();
 		}
 		break;
 	}
-}
-
-void serial_read_station_id(uint8_t x) {
-	station_id = x - '!';
-	vStationID = (float)station_id;
-	serial_fp = serial_wait_for_newline;
 }
 
 void serial_read_step_count(uint8_t x) {
@@ -345,7 +387,7 @@ void serial_read_op(uint8_t x)
 		case '-': {ops[step_idx] = op_subtract; break;}
 		case '*': {ops[step_idx] = op_multiply; break;}
 		case '/': {ops[step_idx] = op_divide; break;}
-		case '%': {ops[step_idx] = op_modulus; break;}
+		case '%': {ops[step_idx] = op_mod; break;}
 		case '<': {ops[step_idx] = op_lt; break;}
 		case '{': {ops[step_idx] = op_lte; break;}
 		case '>': {ops[step_idx] = op_gt; break;}
@@ -524,6 +566,22 @@ void serial_read_gamma_start(uint8_t x) {
 	serial_fp = serial_read_gamma_end;
 }
 
+void serial_read_blink(uint8_t x) {
+	if (x == '\n') {
+		serial_fp = serial_line_start;
+		return;
+	}
+
+	switch (x) {
+		case '0': {blink_type = k_blink_off;} break;
+		case '1': {blink_type = k_blink_on;} break;
+		case '2': {blink_type = k_blink_60th_frame;} break;
+		case '3': {blink_type = k_blink_station_id;} break;
+	}
+
+	serial_fp = serial_wait_for_newline;
+}
+
 void serial_read_gamma_end(uint8_t x) {
 	if (x == '\n') {
 		serial_fp = serial_line_start;
@@ -570,20 +628,20 @@ LineResult _input_from_stream(uint8_t * buf, uint16_t * idx, uint8_t c) {
 		buf[*idx] = c;
 	}
 
+	if ((*idx) == 0) {
+		result = k_line_first_byte;
+	}
+
 	// Advance to next character (line length is longer)
 	(*idx)++;
-
-	// Do not share station IDs. We'll construct our
-	// own message (for downstream machines) after
-	// the station_id is set.
-	if (buf[0] == 'i') {
-		result = k_line_do_not_share;
-	}
 
 	// End of line?
 	if (c == '\n') {
 
-		result = k_line_end;
+		// Finish a shareable message (lifespan is still valid)
+		if (buf[0] != '0') {
+			result = k_line_end;
+		}
 
 		// Valid line length?
 		if ((*idx) <= MAX_LINE_LEN) {
@@ -593,12 +651,12 @@ LineResult _input_from_stream(uint8_t * buf, uint16_t * idx, uint8_t c) {
 				// State machine (function pointer)
 				serial_fp(buf[i]);
 			}
-
-			// Station ID?
-			if (buf[0] == 'i') {
-				result = k_line_set_station_id;
-			}
 		}
+	}
+
+	// Do not share messages with expired lifespans.
+	if (buf[0] == '0') {
+		result = k_line_do_not_share;
 	}
 
 	return result;
@@ -608,13 +666,14 @@ LineResult computer_input_from_upstream(uint8_t x)
 {
 	LineResult result = _input_from_stream(upstreamBuf, &upstreamIdx, x);
 
-	if ((result == k_line_end) || (result == k_line_set_station_id)) {
+	if (result == k_line_end) {
 		upstreamIdx = 0;
 	}
 
 	return result;
 }
 
+/*
 LineResult computer_input_from_downstream(uint8_t x)
 {
 	LineResult result = _input_from_stream(downstreamBuf, &downstreamIdx, x);
@@ -625,6 +684,7 @@ LineResult computer_input_from_downstream(uint8_t x)
 
 	return result;
 }
+*/
 
 void computer_run()
 {
@@ -667,6 +727,10 @@ void computer_run()
 		Serial.println("~~~~~~~~~~~~~~~~~~~~~~~~");
 	}
 
+}
+
+BlinkType computer_get_blink_type() {
+	return blink_type;
 }
 
 #endif

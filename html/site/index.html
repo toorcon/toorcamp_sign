@@ -4,6 +4,7 @@
 		<title>Lexer</title>
 		<meta charset="utf-8">
 		<link type="text/css" rel="stylesheet" href="./css/lexer.css">
+		<link href="./static/p/favicon.ico" rel="icon" type="image/x-icon" />
 	</head>
 
 	<body>
@@ -28,6 +29,16 @@
 
 			<input type="range" min="0" max="255" value="51" class="slider" id="bright" />
 			<label for="bright">Brightness</label>
+		</div>
+
+		<div style="width: 100%;">
+			<select id="blink">
+				<option value="0">off</option>
+				<option value="1">on</option>
+				<option value="2" selected>60th_frame</option>
+				<option value="3">station_id</option>
+			</select>
+			<label for="blink">Blink</label>
 		</div>
 
 		<div id="connectionStatus" class="notConnected">

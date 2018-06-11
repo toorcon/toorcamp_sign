@@ -8,18 +8,15 @@
 
 #define SERIAL_FORMAT  (SERIAL_8N1)
 // Downstream: Down to slave microcontrollers
-#define DOWNSTREAM     Serial2
-#define DOWN_TX        (10)
-#define DOWN_RX        (9)
-// Upstream: Back towards the laptop / programmer
-#define UPSTREAM       Serial1
-#define UP_TX          (1)
-#define UP_RX          (0)
+#define RINGSERIAL     Serial1
+#define RING_TX        (1)
+#define RING_RX        (0)
 
 #define LEVEL_SHIFTER_OE_PIN   (3)
 
 int BLINK_PIN = 13;
 uint8_t frameCount = 0;
+uint8_t blinkCount = 0;
 
 int LED_STRIP_PIN = 17;	// Teensy LC
 const int ledsPerStrip = 72;
@@ -33,18 +30,15 @@ const int BAUD_RATE = 9600;
 
 // the setup routine runs once when you press reset:
 void setup() {
+	// USB to computer
 	Serial.begin(BAUD_RATE);
 
 	pinMode(LEVEL_SHIFTER_OE_PIN, OUTPUT);
 	digitalWrite(LEVEL_SHIFTER_OE_PIN, LOW);
 
-	DOWNSTREAM.setTX(DOWN_TX);
-	DOWNSTREAM.setRX(DOWN_RX);
-	DOWNSTREAM.begin(BAUD_RATE, SERIAL_FORMAT);
-
-	UPSTREAM.setTX(UP_TX);
-	UPSTREAM.setRX(UP_RX);
-	UPSTREAM.begin(BAUD_RATE, SERIAL_FORMAT);
+	RINGSERIAL.setTX(RING_TX);
+	RINGSERIAL.setRX(RING_RX);
+	RINGSERIAL.begin(BAUD_RATE, SERIAL_FORMAT);
 
 	// initialize the digital pin as an output.
 	pinMode(BLINK_PIN, OUTPUT);
@@ -62,21 +56,30 @@ void test_serial_string(String str)
 	}
 }
 
-void input_from_upstream(uint8_t b) {
+void serial_input(uint8_t b) {
 	LineResult result = computer_input_from_upstream(b);
 
 	//Serial.println(result);
 
 	if ((result == k_line_ok) || (result == k_line_end)) {
 		// Pass the data along, downstream.
-		DOWNSTREAM.write(b);
+		RINGSERIAL.write(b);
 
+	} else if (result == k_line_first_byte) {
+		if (('1' <= b) && (b <= '9')) {
+			// Message lifespan: Decrement and pass onward
+			RINGSERIAL.write(b - 1);
+		}
+	}
+
+	/*
 	} else if (result == k_line_set_station_id) {
 		// Increment station_id and pass it to next station.
 		DOWNSTREAM.write('i');
-		DOWNSTREAM.write('!' + computer_get_station_id() + 1);
+		DOWNSTREAM.write('0' + computer_get_station_id() + 1);
 		DOWNSTREAM.write('\n');
 	}
+	*/
 }
 
 // the loop routine runs over and over again forever:
@@ -95,14 +98,14 @@ void loop() {
 	while (Serial.available() > 0) {
 		// read the incoming byte:
 		uint8_t b = Serial.read();
-		input_from_upstream(b);
+		serial_input(b);
 	}
 
 	// From UPSTREAM: From the microprocessor 1 higher
-	while (UPSTREAM.available() > 0) {
+	while (RINGSERIAL.available() > 0) {
 		// read the incoming byte:
-		uint8_t b = UPSTREAM.read();
-		input_from_upstream(b);
+		uint8_t b = RINGSERIAL.read();
+		serial_input(b);
 	}
 
 	// From DOWNSTREAM: other micros can send sensor data
@@ -143,5 +146,34 @@ void loop() {
 	// Blink to prove we're alive.
 	// Blinks once every 60 frames. If blink rate is >1/sec, frame rate is good!
 	frameCount = (frameCount + 1) % 60;
-	digitalWrite(BLINK_PIN, (frameCount == 0) ? HIGH : LOW);
+	if (frameCount == 0) blinkCount++;
+
+	BlinkType bt = computer_get_blink_type();
+
+	switch (bt) {
+		case k_blink_60th_frame:
+		case k_blink_station_id:
+		{
+			int state = (frameCount == 0) ? HIGH : LOW;
+
+			if ((state == HIGH) && (bt == k_blink_station_id)) {
+				state = ((blinkCount & 0x7) <= computer_get_station_id()) ? HIGH : LOW;
+			}
+
+			digitalWrite(BLINK_PIN, state);
+		}
+		break;
+
+		case k_blink_off:
+		{
+			digitalWrite(BLINK_PIN, LOW);
+		}
+		break;
+
+		case k_blink_on:
+		{
+			digitalWrite(BLINK_PIN, HIGH);
+		}
+		break;
+	}
 }

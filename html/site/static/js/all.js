@@ -61,7 +61,7 @@
 /******/ 	
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "7940aa372b6dc3be7290"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "32ab3f61a12d91cdc8e9"; // eslint-disable-line no-unused-vars
 /******/ 	var hotRequestTimeout = 10000;
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
@@ -754,6 +754,7 @@ y = q10 ? GA : LA;
 const MAX_CODE_STEPS = 100;
 const AUTO_PARSE_INTERVAL_MS = 500;
 const PORT = 8080;
+const RECONNECT_INTERVAL_MS = 2000;
 
 // In order of precedence
 const OPERATORS = "*,/,%,+,-,<,<=,>,>=,==,!=,?,:".split(",");
@@ -762,10 +763,10 @@ const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
 const ASSIGN_REF = '= += -= *= /= %=';
 
-const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,u2b,b2u,ternary,rgb,hsv".split(",").sort();
+const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,mod,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,u2b,b2u,ternary,rgb,hsv".split(",").sort();
 
 // All operations/functions must be sent as single-char. These are overrides:
-const OPS = [{ name: '<=', args: 2, code: '{' }, { name: '>=', args: 2, code: '}' }, { name: '==', args: 2, code: '=' }, { name: '!=', args: 2, code: '!' }, { name: 'ternary', args: 3, code: '?' }, { name: 'sin', args: 1, code: 'S' }, { name: 'cos', args: 1, code: 'C' }, { name: 'tan', args: 1, code: 'T' }, { name: 'pow', args: 2, code: 'P' }, { name: 'abs', args: 1, code: 'a' }, { name: 'atan2', args: 2, code: '2' }, { name: 'floor', args: 1, code: 'f' }, { name: 'ceil', args: 1, code: 'c' }, { name: 'round', args: 1, code: 'r' }, { name: 'frac', args: 1, code: '.' }, { name: 'sqrt', args: 1, code: 'Q' }, { name: 'log', args: 1, code: 'L' }, { name: 'logBase', args: 2, code: 'B' }, { name: 'rand', args: 1, code: 'z' }, { name: 'randRange', args: 2, code: 'Z' }, { name: 'min', args: 2, code: 'm' }, { name: 'max', args: 2, code: 'M' }, { name: 'lerp', args: 3, code: 'p' }, { name: 'clamp', args: 3, code: 'x' }, { name: 'tri', args: 1, code: '3' }, { name: 'u2b', args: 1, code: 'b' }, // uni to bi
+const OPS = [{ name: '<=', args: 2, code: '{' }, { name: '>=', args: 2, code: '}' }, { name: '==', args: 2, code: '=' }, { name: '!=', args: 2, code: '!' }, { name: 'ternary', args: 3, code: '?' }, { name: 'sin', args: 1, code: 'S' }, { name: 'cos', args: 1, code: 'C' }, { name: 'tan', args: 1, code: 'T' }, { name: 'pow', args: 2, code: 'P' }, { name: 'abs', args: 1, code: 'a' }, { name: 'atan2', args: 2, code: '2' }, { name: 'floor', args: 1, code: 'f' }, { name: 'ceil', args: 1, code: 'c' }, { name: 'round', args: 1, code: 'r' }, { name: 'frac', args: 1, code: '.' }, { name: 'mod', args: 2, code: '%' }, { name: 'sqrt', args: 1, code: 'Q' }, { name: 'log', args: 1, code: 'L' }, { name: 'logBase', args: 2, code: 'B' }, { name: 'rand', args: 1, code: 'z' }, { name: 'randRange', args: 2, code: 'Z' }, { name: 'min', args: 2, code: 'm' }, { name: 'max', args: 2, code: 'M' }, { name: 'lerp', args: 3, code: 'p' }, { name: 'clamp', args: 3, code: 'x' }, { name: 'tri', args: 1, code: '3' }, { name: 'u2b', args: 1, code: 'b' }, // uni to bi
 { name: 'b2u', args: 1, code: 'u' }, // bi to uni
 { name: 'rgb', args: 3, code: '[' }, { name: 'hsv', args: 3, code: ']' }];
 
@@ -810,6 +811,22 @@ function isClientOpen() {
 function isClientAvailable() {
 	if (!$('#sendEnabled').get(0).checked) return false;
 	return isClientOpen();
+}
+
+function sendMessageToRing(msg, options) {
+	if (!isClientAvailable()) return;
+
+	// First byte: message lifespan
+	if (options && options['raw']) {
+		// "i!" station ID: send in the raw
+		console.log(msg);
+		client.send(msg);
+	} else {
+		var lifespan = "2";
+		var out = lifespan + msg + "\n";
+		console.log(out);
+		client.send(out);
+	}
 }
 
 function barf(reason, expr) {
@@ -1136,9 +1153,7 @@ function parseInput(input) {
 
 function sendToServer() {
 	// Temporarily skip expecution
-	if (isClientAvailable()) {
-		client.send("c!\n");
-	}
+	sendMessageToRing("c!");
 
 	for (var i = 0; i < steps.length; i++) {
 		var line = 's' + String.fromCharCode(33 + i);
@@ -1172,25 +1187,17 @@ function sendToServer() {
 		}
 
 		line += args.join(',');
-		line += "\n";
 
-		console.log(line);
-
-		if (isClientAvailable()) {
-			client.send(line);
-		}
+		sendMessageToRing(line);
 	}
 
 	// Send the number of steps
-	if (isClientAvailable()) {
-		client.send("c" + String.fromCharCode(33 + steps.length) + "\n");
-	}
+	sendMessageToRing("c" + String.fromCharCode(33 + steps.length));
 }
 
 var _lastInput = "";
 function tryParseAgain() {
-	if (!isClientOpen()) {
-		startSocket();
+	if (!isClientAvailable()) {
 		return;
 	}
 
@@ -1204,15 +1211,14 @@ function sendEnabledChange(event) {
 	// Send enabled? Immediately send state
 	if (isClientAvailable()) {
 		gammaBrightChange(null);
+		blinkChange(null);
 
 		// tryParseAgain() will kick in every 250ms or so..
 	}
 }
 
 function resetTimeClick(event) {
-	if (isClientAvailable()) {
-		client.send("t\n");
-	}
+	sendMessageToRing("t");
 }
 
 // Gamma + brightness:
@@ -1224,11 +1230,14 @@ function gammaBrightChange(event) {
 	var b0 = 0x40 | (isGamma ? 0x04 : 0) | bright8 >> 6;
 	var b1 = 0x40 | bright8 & 0x3f;
 
-	var msg = 'g' + String.fromCharCode(b0) + String.fromCharCode(b1) + "\n";
+	var msg = 'g' + String.fromCharCode(b0) + String.fromCharCode(b1);
 
-	if (isClientAvailable()) {
-		client.send(msg);
-	}
+	sendMessageToRing(msg);
+}
+
+function blinkChange(event) {
+	var msg = 'b' + $('#blink').val();
+	sendMessageToRing(msg);
 }
 
 function showConnectionStatus(b) {
@@ -1236,15 +1245,13 @@ function showConnectionStatus(b) {
 }
 
 function startSocket() {
-	if (client) {
-		client.close();
-	}
+	client = new W3CWebSocket('ws://localhost:8080/', 'echo-protocol');
 
-	try {
-		client = new W3CWebSocket('ws://localhost:8080/', 'echo-protocol');
-	} catch (err) {
-		return;
-	}
+	/*
+ if (client) {
+ 	client.close();
+ }
+ */
 
 	client.onerror = function () {
 		//console.log('Connection Error');
@@ -1257,8 +1264,11 @@ function startSocket() {
 	};
 
 	client.onclose = function () {
-		console.log('echo-protocol Client Closed');
+		console.log('echo-protocol Client Closed. Will try reconnecting in ' + RECONNECT_INTERVAL_MS + ' ms...');
 		showConnectionStatus(false);
+
+		client = null;
+		setTimeout(startSocket, RECONNECT_INTERVAL_MS);
 	};
 
 	client.onmessage = function (e) {
@@ -1269,9 +1279,7 @@ function startSocket() {
 }
 
 function sendStationID() {
-	if (isClientAvailable()) {
-		client.send("i!\n");
-	}
+	sendMessageToRing("i");
 
 	setTimeout(sendStationID, 5000);
 }
@@ -1292,6 +1300,7 @@ $(document).ready(function () {
 	$('#resetTime').on('click', resetTimeClick);
 	$('#isGamma').on('change', gammaBrightChange);
 	$('#bright').on('input', gammaBrightChange);
+	$('#blink').on('change', blinkChange);
 
 	startSocket();
 

@@ -37,7 +37,8 @@ textarea#input {
 }
 
 #connectionStatus.connected {
-	color: #0f0;
+	background-color: #0f0;
+	color: #000;
 }
 
 table {

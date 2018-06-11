@@ -1,0 +1,87 @@
+-- Buy local?:
+
+	- Screws
+
+	- 120VAC outlets
+
+
+
+
+	
+
+	- 12V -> 5V converter?
+
+		- The rule of thumb is to put in 1 Farad of capacitance for every 1,000 watts RMS of total system power
+
+		- Capacitance in Farads F = Current I x time t / voltage dV
+
+		- Farads = (Amps * seconds) / Volts
+
+		So ....
+
+		(1A * s)
+		--------    =    0.000022
+		    5
+
+		s = (0.000022 * 5)
+
+		Class 2 capacitor? :: Class 2 ceramic capacitors offer high volumetric efficiency, i.e. large capacitance for a given volume for smoothing, by-pass, coupling and decoupling applications.
+
+
+
+		Electrolytic capacitor temp:
+		-40 to 125° C
+
+
+
+
+
+
+
+	- Screws (for LED units)
+
+		3.5mm diam max?
+		== 0.13"
+
+	- Extension cords (get some for the house)
+
+		- Figure out what I need
+
+
+
+
+Ordering:
+---------
+
+Digikey
+~~~~~~~
+X Logic level shifter
+- CAT6 cables
+- Electric plugs
+- Communication boards (MAX490, full duplex)
+- Header Pins
+- 4-pin Connectors (RJ45)
+- CAT5e cables
+- Proto boards
+- Breadboard (for setup)
+- 5V power supplies
+- Wire
+
+
+- Teensy -> MAX490
+		AWG 22 solid, 4-8 colors
+- Power supply -> OctoWS2811
+		AWG 18 ? 16? stranded
+		red, black
+
+
+PJRC
+~~~~
+- Teensy 3.2 x 10 !
+- Octo breakout boards
+
+Amazon
+~~~~~~
+- USB hub with switches (For testing
+- USB cables (for multiple Teensys)
+- Ultrasonic Sensors (with breakout boards)

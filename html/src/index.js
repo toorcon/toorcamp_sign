@@ -94,13 +94,41 @@ var varNames = {};
 
 var client = null;
 
+function isSendEnabledChecked() {
+	return $('#sendEnabled').get(0).checked;
+}
+
 function isClientOpen() {
 	return client && (client.readyState === WebSocket.OPEN);
 }
 
 function isClientAvailable() {
-	if (!$('#sendEnabled').get(0).checked) return false;
+	if (!isSendEnabledChecked()) return false;
 	return isClientOpen();
+}
+
+function sendMessageToRing(msg, options) {
+	var status = isClientOpen() ? "(open)" : "(closed)";
+	if (!isSendEnabledChecked()) status = "(send_disabled)";
+
+	// First byte: message lifespan
+	if (options && options['raw']) {
+		// "i!" station ID: send in the raw
+		console.log(status, msg);
+
+		if (isClientAvailable()) {
+			client.send(msg);
+		}
+
+	} else {
+		var lifespan = "2";
+		var out = lifespan + msg + "\n";
+		console.log(status, out);
+
+		if (isClientAvailable()) {
+			client.send(out);
+		}
+	}
 }
 
 function barf(reason, expr) {
@@ -431,9 +459,7 @@ function parseInput(input)
 function sendToServer()
 {
 	// Temporarily skip expecution
-	if (isClientAvailable()) {
-		client.send("c!\n");
-	}
+	sendMessageToRing("c!");
 
 	for (var i = 0; i < steps.length; i++) {
 		var line = 's' + String.fromCharCode(33 + i);
@@ -467,29 +493,17 @@ function sendToServer()
 		}
 
 		line += args.join(',');
-		line += "\n";
 
-		console.log(line);
-
-		if (isClientAvailable()) {
-			client.send(line);
-		}
+		sendMessageToRing(line);
 	}
 
 	// Send the number of steps
-	if (isClientAvailable()) {
-		client.send("c" + String.fromCharCode(33 + steps.length) + "\n");
-	}
-
+	sendMessageToRing("c" + String.fromCharCode(33 + steps.length));
 }
 
 var _lastInput = "";
 function tryParseAgain()
 {
-	if (!isClientAvailable()) {
-		return;
-	}
-
 	var input = $('#input').val();
 	if (input === _lastInput) return;
 	_lastInput = input;
@@ -500,15 +514,14 @@ function sendEnabledChange(event) {
 	// Send enabled? Immediately send state
 	if (isClientAvailable()) {
 		gammaBrightChange(null);
+		blinkChange(null);
 
 		// tryParseAgain() will kick in every 250ms or so..
 	}
 }
 
 function resetTimeClick(event) {
-	if (isClientAvailable()) {
-		client.send("t\n");
-	}
+	sendMessageToRing("t");
 }
 
 // Gamma + brightness:
@@ -520,11 +533,14 @@ function gammaBrightChange(event) {
 	var b0 = 0x40 | (isGamma ? 0x04 : 0) | (bright8 >> 6);
 	var b1 = 0x40 | bright8 & 0x3f;
 
-	var msg = 'g' + String.fromCharCode(b0) + String.fromCharCode(b1) + "\n";
+	var msg = 'g' + String.fromCharCode(b0) + String.fromCharCode(b1);
 
-	if (isClientAvailable()) {
-		client.send(msg);
-	}
+	sendMessageToRing(msg);
+}
+
+function blinkChange(event) {
+	var msg = 'b' + $('#blink').val();
+	sendMessageToRing(msg);
 }
 
 function showConnectionStatus(b) {
@@ -570,9 +586,7 @@ function startSocket() {
 }
 
 function sendStationID() {
-	if (isClientAvailable()) {
-		client.send("i!\n");
-	}
+	sendMessageToRing("i");
 
 	setTimeout(sendStationID, 5000);
 }
@@ -593,6 +607,7 @@ $(document).ready(function(){
 	$('#resetTime').on('click', resetTimeClick);
 	$('#isGamma').on('change', gammaBrightChange);
 	$('#bright').on('input', gammaBrightChange);
+	$('#blink').on('change', blinkChange);
 
 	startSocket();
 

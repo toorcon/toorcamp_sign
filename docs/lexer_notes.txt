@@ -5,60 +5,15 @@
 Lexer tasks:
 (See the casual.pm board)
 
-
-
-
--- Buy local?:
-
-	- Screws (for LED units)
-
-	- Extension cords (get some for the house)
-
-		- Figure out what I need
+- Modulo '%' ?
 
 
 
 
-Ordering:
----------
-
-Digikey
-~~~~~~~
-X Logic level shifter
-- CAT6 cables
-- Electric plugs
-- Communication boards (MAX490, full duplex)
-- Header Pins
-- 4-pin Connectors (RJ45)
-- CAT5e cables
-- Proto boards
-- Breadboard (for setup)
-- 5V power supplies
-- Wire
-
-
-- Teensy -> MAX490
-		AWG 22 solid, 4-8 colors
-- Power supply -> OctoWS2811
-		AWG 18 ? 16? stranded
-		red, black
 
 
 
-***************
-**  ORDERED!
-***************
 
-PJRC
-~~~~
-- Teensy 3.2 x 10 !
-- Octo breakout boards
-
-Amazon
-~~~~~~
-- USB hub with switches (For testing
-- USB cables (for multiple Teensys)
-- Ultrasonic Sensors (with breakout boards)
 
 
 
