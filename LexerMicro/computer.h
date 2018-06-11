@@ -11,9 +11,11 @@
 #define ARG_COUNT          (3)
 #define STATION_COUNT      (3)
 #define LED_COUNT          (72)
+#define ACCUMULATOR_COUNT  (1)
+#define NOISE_SIZE         (16)
 
 #define DEFAULT_GAMMA      (true)
-#define DEFAULT_BRIGHT     (0.2f)
+#define DEFAULT_BRIGHT     (51)
 
 #define DEBUG_STATE        (false)
 #define SERIAL_PRINT_RUN   (false)
@@ -124,6 +126,138 @@ void serial_error();
 void serial_wait_for_newline(uint8_t x);
 
 //
+// PERSISTENT STATE
+//
+
+float accum[ACCUMULATOR_COUNT][LED_COUNT];
+
+void reset_time_and_accumulators() {
+	vTime = 0.0f;
+
+	for (uint8_t a = 0; a < ACCUMULATOR_COUNT; a++) {
+		for (uint16_t i = 0; i < LED_COUNT; i++) {
+			accum[a][i] = 0.0f;
+		}
+	}
+}
+
+float noise[NOISE_SIZE][NOISE_SIZE][NOISE_SIZE];
+
+void reroll_noise() {
+	// Noisiest, quietest octave: Just use randf() values.
+	for (uint8_t i = 0; i < NOISE_SIZE; i++) {
+		for (uint8_t j = 0; j < NOISE_SIZE; j++) {
+			for (uint8_t k = 0; k < NOISE_SIZE; k++) {
+				noise[i][j][k] = randf();
+			}
+		}
+	}
+
+	// Larger octaves (with interpolated values) get
+	// progressively "louder" (stronger magnitude).
+	for (uint8_t step = 2; step < NOISE_SIZE; step *= 2) {
+		float step_f = (float)(step);
+		float invStep = 1.0f / step_f;
+
+		uint8_t sz = NOISE_SIZE / step;
+		float table[sz][sz][sz];
+
+		for (uint8_t i = 0; i < sz; i++) {
+			for (uint8_t j = 0; j < sz; j++) {
+				for (uint8_t k = 0; k < sz; k++) {
+					// Lower octaves are "louder" (stronger magnitude)
+					table[i][j][k] = randf() * step_f;
+				}
+			}
+		}
+
+		/*
+		uint8_t offset_i = random(NOISE_SIZE);
+		uint8_t offset_j = random(NOISE_SIZE);
+		uint8_t offset_k = random(NOISE_SIZE);
+		*/
+
+		// FIXME ? Does 1D and 2D noise look better when
+		//         waveforms are snapped to [0,0,0] ?
+		uint8_t offset_i = 0;
+		uint8_t offset_j = 0;
+		uint8_t offset_k = 0;
+
+		// table values are chosen. Interpolate this octave
+		// of noise, add onto noise buffer.
+		// Get ready for some ugly nested code:
+		for (uint8_t i = 0; i < sz; i++) {
+			uint8_t i0 = i;
+			uint8_t i1 = (i0 + 1) % sz;
+
+			for (uint8_t j = 0; j < sz; j++) {
+				uint8_t j0 = j;
+				uint8_t j1 = (j0 + 1) % sz;
+
+				for (uint8_t k = 0; k < sz; k++) {
+					uint8_t k0 = k;
+					uint8_t k1 = (k0 + 1) % sz;
+
+					// Set noise[][][] values
+					for (uint8_t iN = 0; iN < step; iN++) {
+						float ip = iN * invStep;	// lerp
+						uint8_t ic = (i * sz + iN + offset_i) % NOISE_SIZE;	// noise[] index
+
+						// Lerp values across i dimension
+						float iv0 = lerp(table[i0][j0][k0], table[i1][j0][k0], ip);
+						float iv1 = lerp(table[i0][j1][k0], table[i1][j1][k0], ip);
+						float iv2 = lerp(table[i0][j0][k1], table[i1][j0][k1], ip);
+						float iv3 = lerp(table[i0][j1][k1], table[i1][j1][k1], ip);
+
+						for (uint8_t jN = 0; jN < step; jN++) {
+							float jp = jN * invStep;	// lerp
+							uint8_t jc = (j * sz + jN + offset_j) % NOISE_SIZE;	// noise[] index
+
+							// Lerp i-values across the j dimension
+							float jv0 = lerp(iv0, iv1, jp);
+							float jv1 = lerp(iv2, iv3, jp);
+
+							for (uint8_t kN = 0; kN < step; kN++) {
+								float kp = kN * invStep;	// lerp
+								uint8_t kc = (k * sz + kN + offset_k) % NOISE_SIZE;	// noise[] index
+
+								// Lerp ij-values across the k dimension
+								noise[ic][jc][kc] += lerp(jv0, jv1, kp);
+							}
+						}
+					}
+
+				}
+			}
+		}
+	}
+
+	// Normalize between 0..1
+	float _min = 9999.0f;
+	float _max = -9999.0f;
+
+	for (uint8_t i = 0; i < NOISE_SIZE; i++) {
+		for (uint8_t j = 0; j < NOISE_SIZE; j++) {
+			for (uint8_t k = 0; k < NOISE_SIZE; k++) {
+				_min = min(_min, noise[i][j][k]);
+				_max = max(_max, noise[i][j][k]);
+			}
+		}
+	}
+
+	float mult = 1.0f / (_max - _min);
+
+	for (uint8_t i = 0; i < NOISE_SIZE; i++) {
+		for (uint8_t j = 0; j < NOISE_SIZE; j++) {
+			for (uint8_t k = 0; k < NOISE_SIZE; k++) {
+				noise[i][j][k] = (noise[i][j][k] - _min) * mult;
+			}
+		}
+	}
+
+}
+
+//
 //  OPERATIONS
 //
 
@@ -167,9 +301,28 @@ float op_ternary() { return (f0 != 0.0f) ? f1 : f2; }
 //            But they're definitely performing slower, for me.
 float op_sin() { return sin(f0); }
 float op_cos() { return cos(f0); }
+float op_sin01() { return (sin(f0 * (float)(M_PI * 2.0f)) + 1.0f) * 0.5f; }
+float op_cos01() { return (cos(f0 * (float)(M_PI * 2.0f)) + 1.0f) * 0.5f; }
+
+// Sine-quad, cos-quad (or maybe the 'q' stands for 'quick')
+inline float _sinq(float v) {
+	float dec = v - floor(v);	// decimal part. wrap within 0..1
+
+	if (dec >= 0.5f) {
+		dec -= 0.75f;
+		return dec * dec * 8.0f;
+	}
+
+	dec -= 0.25f;
+	return 1.0f - (dec * dec * 8.0f);
+}
+
+float op_sinq() { return _sinq(f0); }
+float op_cosq() { return _sinq(f0 - 0.25f); }
+
 float op_tan() { return tan(f0); }
 float op_pow() { return pow(f0, f1); }
-float op_abs() { return fabs(f0); }
+float op_abs() { return abs(f0); }
 float op_atan2() { return atan2(f0, f1); }
 
 float op_floor() { return floor(f0); }
@@ -181,8 +334,114 @@ float op_frac() { float cachef0 = f0; return cachef0 - floor(cachef0); }
 float op_sqrt() { return sqrt(f0); }
 float op_log() { return log(f0); }
 float op_logBase() { return log(f0) / log(f1); }
+
 float op_rand() { return randf(); }
 float op_randRange() { float cachef0 = f0; return cachef0 + (f1 - cachef0) * randf(); }
+
+float op_noise1() {
+	float c0 = f0;	// cache
+
+	float xf = (c0 - floor(c0)) * NOISE_SIZE;	// wrap in 0..NOISE_SIZE
+
+	// noise[] lookups
+	uint8_t x0 = (uint8_t)(xf);
+	uint8_t x1 = (x0 + 1) % NOISE_SIZE;
+	float xp = xf - floor(xf);
+
+	return lerp(noise[x0][0][0], noise[x1][0][0], xp);
+}
+
+float op_noise2() {
+	// cache
+	float c0 = f0;
+	float c1 = f1;
+
+	// wrap in 0..NOISE_SIZE
+	float xf = (c0 - floor(c0)) * NOISE_SIZE;
+	float yf = (c1 - floor(c1)) * NOISE_SIZE;
+
+	// noise[] lookups
+	uint8_t x0 = (uint8_t)(xf);
+	uint8_t x1 = (x0 + 1) % NOISE_SIZE;
+	float xp = xf - floor(xf);
+	uint8_t y0 = (uint8_t)(yf);
+	uint8_t y1 = (y0 + 1) % NOISE_SIZE;
+	float yp = yf - floor(yf);
+
+	float xv0 = lerp(noise[x0][y0][0], noise[x1][y0][0], xp);
+	float xv1 = lerp(noise[x0][y1][0], noise[x1][y1][0], xp);
+
+	return lerp(xv0, xv1, yp);
+}
+
+float op_noise3() {
+	// cache
+	float c0 = f0;
+	float c1 = f1;
+	float c2 = f2;
+
+	// wrap in 0..NOISE_SIZE
+	float xf = (c0 - floor(c0)) * NOISE_SIZE;
+	float yf = (c1 - floor(c1)) * NOISE_SIZE;
+	float zf = (c2 - floor(c2)) * NOISE_SIZE;
+
+	// noise[] lookups
+	uint8_t x0 = (uint8_t)(xf);
+	uint8_t x1 = (x0 + 1) % NOISE_SIZE;
+	float xp = xf - floor(xf);
+	uint8_t y0 = (uint8_t)(yf);
+	uint8_t y1 = (y0 + 1) % NOISE_SIZE;
+	float yp = yf - floor(yf);
+	uint8_t z0 = (uint8_t)(zf);
+	uint8_t z1 = (z0 + 1) % NOISE_SIZE;
+	float zp = zf - floor(zf);
+
+	float xv0 = lerp(noise[x0][y0][z0], noise[x1][y0][z0], xp);
+	float xv1 = lerp(noise[x0][y1][z0], noise[x1][y1][z0], xp);
+	float xv2 = lerp(noise[x0][y0][z1], noise[x1][y0][z1], xp);
+	float xv3 = lerp(noise[x0][y1][z1], noise[x1][y1][z1], xp);
+
+	float yv0 = lerp(xv0, xv1, yp);
+	float yv1 = lerp(xv2, xv3, yp);
+
+	return lerp(yv0, yv1, zp);
+}
+
+float op_noise1q() {
+	float c0 = f0;	// cache
+
+	// wrap in 0..NOISE_SIZE
+	uint8_t x = (uint8_t)((c0 - floor(c0)) * NOISE_SIZE);
+
+	return noise[x][0][0];
+}
+
+float op_noise2q() {
+	// cache
+	float c0 = f0;
+	float c1 = f1;
+
+	// wrap in 0..NOISE_SIZE
+	uint8_t x = (uint8_t)((c0 - floor(c0)) * NOISE_SIZE);
+	uint8_t y = (uint8_t)((c1 - floor(c1)) * NOISE_SIZE);
+
+	return noise[x][y][0];
+}
+
+float op_noise3q() {
+	// cache
+	float c0 = f0;
+	float c1 = f1;
+	float c2 = f2;
+
+	// wrap in 0..NOISE_SIZE
+	uint8_t x = (uint8_t)((c0 - floor(c0)) * NOISE_SIZE);
+	uint8_t y = (uint8_t)((c1 - floor(c1)) * NOISE_SIZE);
+	uint8_t z = (uint8_t)((c2 - floor(c2)) * NOISE_SIZE);
+
+	return noise[x][y][z];
+}
+
 float op_min() { return min(f0, f1); }
 float op_max() { return max(f0, f1); }
 float op_lerp() { float cachef0 = f0; return cachef0 + (f1 - cachef0) * f2; }
@@ -194,8 +453,18 @@ float op_tri() { 	// Triangle wave oscillator
 	return ((r < 0.5f) ? (r) : (1.0f - r)) * 2.0f;
 }
 
+// 0..1..0 around the origin, all other values are 0
+float op_peak() {
+	return max(0.0f, 1.0f - abs(f0));
+}
+
 float op_uni2bi() { return (f0 * 2.0f) - 1.0f; }	// unipolar to bipolar
 float op_bi2uni() { return (f0 + 1.0f) * 0.5f; }	// bipolar to unipolar
+
+float op_accum0() {
+	accum[0][computeLED] += f0;
+	return accum[0][computeLED];
+}
 
 float op_rgb() {
 	uint8_t r = constrain((int16_t)(f0 * 0xff), 0x0, 0xff);
@@ -267,7 +536,7 @@ void set_gamma_and_brightness(bool isGamma, uint8_t bright) {
 			// Fast! TODO: How does it look?
 			float v2 = raw * raw;
 			float v3 = raw * v2;
-			v = lerp(v2, v3, 0.23f);	// Close enough to pow(v, 2.2)!
+			v = lerp(v2, v3, 0.21f);	// Close enough to pow(v, 2.2)!
 		}
 
 		lut[i] = (uint8_t)(round(v * bright));
@@ -311,7 +580,7 @@ void serial_read_data_type(uint8_t x)
 		// Reset time
 		case 't':
 		{
-			vTime = 0.0f;
+			reset_time_and_accumulators();
 			serial_fp = serial_wait_for_newline;
 		}
 		break;
@@ -389,8 +658,8 @@ void serial_read_op(uint8_t x)
 		case '/': {ops[step_idx] = op_divide; break;}
 		case '%': {ops[step_idx] = op_mod; break;}
 		case '<': {ops[step_idx] = op_lt; break;}
-		case '{': {ops[step_idx] = op_lte; break;}
 		case '>': {ops[step_idx] = op_gt; break;}
+		case '{': {ops[step_idx] = op_lte; break;}
 		case '}': {ops[step_idx] = op_gte; break;}
 		case '=': {ops[step_idx] = op_equal; break;}
 		case '!': {ops[step_idx] = op_notequal; break;}
@@ -399,26 +668,38 @@ void serial_read_op(uint8_t x)
 		// Functions
 		case 'S': {ops[step_idx] = op_sin; break;}
 		case 'C': {ops[step_idx] = op_cos; break;}
+		case 's': {ops[step_idx] = op_sin01; break;}
+		case 'c': {ops[step_idx] = op_cos01; break;}
+		case 'q': {ops[step_idx] = op_sinq; break;}
+		case 'Q': {ops[step_idx] = op_cosq; break;}
 		case 'T': {ops[step_idx] = op_tan; break;}
 		case 'P': {ops[step_idx] = op_pow; break;}
-		case 'a': {ops[step_idx] = op_abs; break;}
-		case '2': {ops[step_idx] = op_atan2; break;}
-		case 'f': {ops[step_idx] = op_floor; break;}
-		case 'c': {ops[step_idx] = op_ceil; break;}
+		case '|': {ops[step_idx] = op_abs; break;}
+		case 'A': {ops[step_idx] = op_atan2; break;}
+		case '_': {ops[step_idx] = op_floor; break;}
+		case '`': {ops[step_idx] = op_ceil; break;}
 		case 'r': {ops[step_idx] = op_round; break;}
 		case '.': {ops[step_idx] = op_frac; break;}
-		case 'Q': {ops[step_idx] = op_sqrt; break;}
+		case 'R': {ops[step_idx] = op_sqrt; break;}
 		case 'L': {ops[step_idx] = op_log; break;}
 		case 'B': {ops[step_idx] = op_logBase; break;}
 		case 'z': {ops[step_idx] = op_rand; break;}
 		case 'Z': {ops[step_idx] = op_randRange; break;}
+		case '1': {ops[step_idx] = op_noise1; break;}
+		case '2': {ops[step_idx] = op_noise2; break;}
+		case '3': {ops[step_idx] = op_noise3; break;}
+		case '4': {ops[step_idx] = op_noise1q; break;}
+		case '5': {ops[step_idx] = op_noise2q; break;}
+		case '6': {ops[step_idx] = op_noise3q; break;}
 		case 'm': {ops[step_idx] = op_min; break;}
 		case 'M': {ops[step_idx] = op_max; break;}
-		case 'p': {ops[step_idx] = op_lerp; break;}
+		case 'l': {ops[step_idx] = op_lerp; break;}
 		case 'x': {ops[step_idx] = op_clamp; break;}
-		case '3': {ops[step_idx] = op_tri; break;}
+		case 't': {ops[step_idx] = op_tri; break;}
+		case 'p': {ops[step_idx] = op_peak; break;}
 		case 'b': {ops[step_idx] = op_uni2bi; break;}
 		case 'u': {ops[step_idx] = op_bi2uni; break;}
+		case '0': {ops[step_idx] = op_accum0; break;}
 		case '[': {ops[step_idx] = op_rgb; break;}
 		case ']': {ops[step_idx] = op_hsv; break;}
 	}
@@ -615,6 +896,9 @@ void serial_wait_for_newline(uint8_t x)
 //
 
 void computer_init(OctoWS2811 * inLEDs) {
+	randomSeed(1337);
+	reset_time_and_accumulators();
+	reroll_noise();
 	set_gamma_and_brightness(DEFAULT_GAMMA, DEFAULT_BRIGHT);
 	serial_fp = serial_line_start;
 	_leds = inLEDs;

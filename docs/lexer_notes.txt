@@ -9,7 +9,15 @@ Lexer tasks:
 
 
 
+// Noise test
+t = T * 0.1 + P;
+led = rgb(0, 0, noise2(t, t * 4.7))
 
+
+
+
+// Op precedence bug: Does (4 - 8) first
+led = rgb(0, peak(P * 4 - 8), 0)
 
 
 

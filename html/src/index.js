@@ -25,10 +25,12 @@ const OPERATOR_REF = "* / % + - < <= > >= == != ?:";
 
 const ASSIGN_REF = '= += -= *= /= %=';
 
-const FUNCS = "sin,cos,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,min,max,lerp,clamp,tri,u2b,b2u,ternary,rgb,hsv".split(",").sort();
+const FUNCS = "sin,cos,sin01,cos01,sinq,cosq,tan,pow,abs,atan2,floor,ceil,round,frac,sqrt,log,logBase,rand,randRange,noise1,noise2,noise3,noise1q,noise2q,noise3q,min,max,lerp,clamp,tri,peak,u2b,b2u,ternary,accum0,rgb,hsv".split(",").sort();
 
 // All operations/functions must be sent as single-char. These are overrides:
 const OPS = [
+	{name: '<',         args: 2, code: '<'},
+	{name: '>',         args: 2, code: '>'},
 	{name: '<=',        args: 2, code: '{'},
 	{name: '>=',        args: 2, code: '}'},
 	{name: '==',        args: 2, code: '='},
@@ -36,26 +38,38 @@ const OPS = [
 	{name: 'ternary',   args: 3, code: '?'},
 	{name: 'sin',       args: 1, code: 'S'},
 	{name: 'cos',       args: 1, code: 'C'},
+	{name: 'sin01',     args: 1, code: 's'},
+	{name: 'cos01',     args: 1, code: 'c'},
+	{name: 'sinq',      args: 1, code: 'q'},
+	{name: 'cosq',      args: 1, code: 'Q'},
 	{name: 'tan',       args: 1, code: 'T'},
 	{name: 'pow',       args: 2, code: 'P'},
-	{name: 'abs',       args: 1, code: 'a'},
-	{name: 'atan2',     args: 2, code: '2'},
-	{name: 'floor',     args: 1, code: 'f'},
-	{name: 'ceil',      args: 1, code: 'c'},
-	{name: 'round',     args: 1, code: 'r'},
+	{name: 'abs',       args: 1, code: '|'},
+	{name: 'atan2',     args: 2, code: 'A'},
+	{name: 'floor',     args: 1, code: '_'},
+	{name: 'ceil',      args: 1, code: '`'},
+	{name: 'round',     args: 1, code: 'R'},
 	{name: 'frac',      args: 1, code: '.'},
-	{name: 'sqrt',      args: 1, code: 'Q'},
+	{name: 'sqrt',      args: 1, code: 'r'},
 	{name: 'log',       args: 1, code: 'L'},
 	{name: 'logBase',   args: 2, code: 'B'},
 	{name: 'rand',      args: 1, code: 'z'},
 	{name: 'randRange', args: 2, code: 'Z'},
+	{name: 'noise1',    args: 1, code: '1'},
+	{name: 'noise2',    args: 2, code: '2'},
+	{name: 'noise3',    args: 3, code: '3'},
+	{name: 'noise1q',   args: 1, code: '4'},
+	{name: 'noise2q',   args: 2, code: '5'},
+	{name: 'noise3q',   args: 3, code: '6'},
 	{name: 'min',       args: 2, code: 'm'},
 	{name: 'max',       args: 2, code: 'M'},
-	{name: 'lerp',      args: 3, code: 'p'},
+	{name: 'lerp',      args: 3, code: 'l'},
 	{name: 'clamp',     args: 3, code: 'x'},
-	{name: 'tri',       args: 1, code: '3'},
+	{name: 'tri',       args: 1, code: 't'},
+	{name: 'peak',      args: 1, code: 'p'},
 	{name: 'u2b',       args: 1, code: 'b'},	// uni to bi
 	{name: 'b2u',       args: 1, code: 'u'},	// bi to uni
+	{name: 'accum0',    args: 1, code: '0'},
 	{name: 'rgb',       args: 3, code: '['},
 	{name: 'hsv',       args: 3, code: ']'}
 ];
