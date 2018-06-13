@@ -23,6 +23,8 @@ y *= y * y;
 led = rgb(x, 0, y)
 
 
+// Ultrasonic sensor test
+led = rgb(lerp(sin01(P * 10 + T), 1, UC), 0, 0)
 
 
 // Op precedence bug: Does (4 - 8) first

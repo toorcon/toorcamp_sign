@@ -148,6 +148,8 @@ void set_station_id(uint8_t x) {
 	vStationID = (float)station_id;
 
 	led_layout_set_all(station_id, led_x, led_y, led_local_angle);
+
+	lexer_station_id_did_change(x);
 }
 
 float accum[ACCUMULATOR_COUNT][LED_COUNT];

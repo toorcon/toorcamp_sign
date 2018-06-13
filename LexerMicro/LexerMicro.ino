@@ -4,6 +4,10 @@
 
 #include <stdint.h>
 #include <OctoWS2811.h>
+
+// Forward declaration for computer.h :P
+void lexer_station_id_did_change(uint8_t x);
+
 #include "computer.h"
 
 #define SERIAL_FORMAT  (SERIAL_8N1)
@@ -18,7 +22,7 @@
 #define SENSOR_CM_MAX           (SENSOR_TIMEOUT_MICROS / 58.0f)
 #define TRIG                    (19)
 #define ECHO                    (18)
-#define ULTRASONIC_INTERVAL_MS  (100)
+#define ULTRASONIC_INTERVAL_MS  ((SENSOR_TIMEOUT_MICROS * 8) / 1000 + 10)
 
 int BLINK_PIN = 13;
 uint8_t frameCount = 0;
@@ -82,15 +86,12 @@ void serial_input(uint8_t b) {
 			RINGSERIAL.write(b - 1);
 		}
 	}
+}
 
-	/*
-	} else if (result == k_line_set_station_id) {
-		// Increment station_id and pass it to next station.
-		DOWNSTREAM.write('i');
-		DOWNSTREAM.write('0' + computer_get_station_id() + 1);
-		DOWNSTREAM.write('\n');
-	}
-	*/
+void lexer_station_id_did_change(uint8_t x) {
+	// Adjust the ultrasonic timing.
+	// Each station should at a different time.
+	millisSinceSensor = (x / 8.0f) * ULTRASONIC_INTERVAL_MS;
 }
 
 // the loop routine runs over and over again forever:
