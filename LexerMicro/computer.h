@@ -110,8 +110,11 @@ float vStationID = 0.0f;
 float vLEDIndex = 0.0f;
 float vLEDRatio = 0.0f;
 float vLEDCount = 60.0f;
-float vUltrasonicCM = 0.0f;
-float vUltrasonicCM_dest = 0.0f;
+float vUltrasonic_dest = 0.0f;
+float vUltrasonic = 0.0f;
+float vUltrasonicPow2 = 0.0f;
+float vUltrasonicPow4 = 0.0f;
+float vUltrasonicPow8 = 0.0f;
 uint16_t computeLED = 0;
 
 //
@@ -867,8 +870,21 @@ void serial_arg_read_buf(uint8_t x)
 		break;
 
 		case 'U': {
-			current_arg->fp = &vUltrasonicCM;
 			current_arg->type = k_float_ptr;
+
+			if (buf[1] == '_') {
+				current_arg->fp = &vUltrasonic;
+			} else if (buf[1] == 'A') {
+				current_arg->fp = &vUltrasonicPow2;
+			} else if (buf[1] == 'B') {
+				current_arg->fp = &vUltrasonicPow4;
+			} else if (buf[1] == 'C') {
+				current_arg->fp = &vUltrasonicPow8;
+			} else {
+				current_arg->type = k_float;
+				serial_error();
+				return;
+			}
 		}
 		break;
 
@@ -1062,7 +1078,10 @@ void computer_run(uint16_t elapsedMillis)
 	vLEDRatio = 0.0f;
 	float ratioInc = 1.0f / vLEDCount;
 
-	vUltrasonicCM = lerp(vUltrasonicCM, vUltrasonicCM_dest, min(elapsed_f * SENSOR_SMOOTHING, 1.0f));
+	vUltrasonic = lerp(vUltrasonic, vUltrasonic_dest, min(elapsed_f * SENSOR_SMOOTHING, 1.0f));
+	vUltrasonicPow2 = vUltrasonic * vUltrasonic;
+	vUltrasonicPow4 = vUltrasonicPow2 * vUltrasonicPow2;
+	vUltrasonicPow8 = vUltrasonicPow4 * vUltrasonicPow2;
 
 	for (computeLED = 0; computeLED < LED_COUNT; computeLED++) {
 
@@ -1101,7 +1120,7 @@ BlinkType computer_get_blink_type() {
 }
 
 void computer_set_ultrasonic_cm(float cm) {
-	vUltrasonicCM_dest = cm;
+	vUltrasonic_dest = cm;
 }
 
 #endif
