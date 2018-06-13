@@ -61,7 +61,7 @@
 /******/ 	
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "277746ea8450742df96b"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "2a77a7786dcf10d1f69b"; // eslint-disable-line no-unused-vars
 /******/ 	var hotRequestTimeout = 10000;
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
@@ -786,9 +786,10 @@ const SPECIAL_VARS = {
 	"P": "ratio of LED on strand (==I/C)",
 	"X": "global X position",
 	"Y": "global Y position",
-	"LX": "X position within the letter",
-	//"GA": "global angle (from center of sign)",
-	"LA": "local angle (from center of letter)"
+	"A": "global angle (from center of sign)",
+	"U": "ultrasonic sensor"
+	//"LX": "X position within the letter",
+	//"LA": "local angle (from center of letter)",
 	//"IN": "true if inside letter (hole)",
 	//"OT": "true if outside letter (outer edge)",
 };

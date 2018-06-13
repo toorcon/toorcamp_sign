@@ -91,6 +91,7 @@ const SPECIAL_VARS = {
 	"X": "global X position",
 	"Y": "global Y position",
 	"A": "global angle (from center of sign)",
+	"U": "ultrasonic sensor",
 	//"LX": "X position within the letter",
 	//"LA": "local angle (from center of letter)",
 	//"IN": "true if inside letter (hole)",

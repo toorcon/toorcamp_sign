@@ -12,7 +12,13 @@
 #define RING_TX        (1)
 #define RING_RX        (0)
 
-#define LEVEL_SHIFTER_OE_PIN   (3)
+// Timeout: one frame at 30fps ?
+// 33333 us -> 574 cm -> 18 feet
+#define SENSOR_TIMEOUT_MICROS   (1000000 / 30)
+#define SENSOR_CM_MAX           (SENSOR_TIMEOUT_MICROS / 58.0f)
+#define TRIG                    (19)
+#define ECHO                    (18)
+#define ULTRASONIC_INTERVAL_MS  (100)
 
 int BLINK_PIN = 13;
 uint8_t frameCount = 0;
@@ -25,6 +31,9 @@ int drawingMemory[ledsPerStrip * 6];
 const int config = WS2811_GRB | WS2811_800kHz;
 OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 
+unsigned long lastMillis = 0;
+uint16_t millisSinceSensor = ULTRASONIC_INTERVAL_MS;
+
 // Arduino Uno: 19200 baud works, 57600 definitely does not.
 const int BAUD_RATE = 9600;
 
@@ -33,8 +42,8 @@ void setup() {
 	// USB to computer
 	Serial.begin(BAUD_RATE);
 
-	pinMode(LEVEL_SHIFTER_OE_PIN, OUTPUT);
-	digitalWrite(LEVEL_SHIFTER_OE_PIN, LOW);
+	pinMode(TRIG, OUTPUT);
+	pinMode(ECHO, INPUT);
 
 	RINGSERIAL.setTX(RING_TX);
 	RINGSERIAL.setRX(RING_RX);
@@ -47,6 +56,8 @@ void setup() {
 	leds.show();
 
 	computer_init(&leds);
+
+	lastMillis = millis();
 }
 
 void test_serial_string(String str)
@@ -86,13 +97,29 @@ void serial_input(uint8_t b) {
 void loop() {
 	leds.show();
 
-	// Test!
-	/*
-	test_serial_string("i!\n");
-	test_serial_string("s!+3.45,5\n");
-	test_serial_string("s\"*v!,3\n");
-	test_serial_string("c#\n");
-	*/
+	unsigned long m = millis();
+	uint16_t elapsed = m - lastMillis;
+	lastMillis = m;
+
+	// Ultrasonic sensor
+	millisSinceSensor += elapsed;
+	if (millisSinceSensor >= ULTRASONIC_INTERVAL_MS) {
+		millisSinceSensor -= ULTRASONIC_INTERVAL_MS;
+
+		// Activate TRIG
+		digitalWrite(TRIG, HIGH);
+		delayMicroseconds(10);
+		digitalWrite(TRIG, LOW);
+
+		// Duration for ECHO to be heard (in micros)
+		unsigned long duration = pulseIn(ECHO, HIGH, SENSOR_TIMEOUT_MICROS);
+
+		// Range varies a lot! 100==very close. 1294000==far.
+		float cm = duration / 58.0f;
+
+		// 1.0==near! 0.0==far.
+		computer_set_ultrasonic_cm(1.0f - (cm / SENSOR_CM_MAX));
+	}
 
 	// From Serial: From the laptop/programmer
 	while (Serial.available() > 0) {
@@ -108,40 +135,7 @@ void loop() {
 		serial_input(b);
 	}
 
-	// From DOWNSTREAM: other micros can send sensor data
-	// upstream.
-	/*
-	// TODO
-	while (UPSTREAM.available() > 0) {
-		// read the incoming byte:
-		uint8_t b = UPSTREAM.read();
-		computer_serial_input(b);
-
-		// Pass down the line
-		DOWNSTREAM.write(b);
-	}
-	*/
-
-	computer_run();
-
-	/*
-	// Hmm.
-	DOWNSTREAM.write('H');
-	DOWNSTREAM.write('i');
-	DOWNSTREAM.write('\n');
-	delay(1000);
-	*/
-
-	/*
-	while (UPSTREAM.available() > 0) {
-		char b = UPSTREAM.read();
-		if (b == '\n') {
-			Serial.println(b);
-		} else {
-			Serial.print(b);
-		}
-	}
-	*/
+	computer_run(elapsed);
 
 	// Blink to prove we're alive.
 	// Blinks once every 60 frames. If blink rate is >1/sec, frame rate is good!

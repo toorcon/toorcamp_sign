@@ -4,11 +4,17 @@ $$$$$$$$$$$$$$$$$$$$$$$$$$$
 
  0:   RX1
  1:   TX1
+23:  (none)
+22:  (none)
+19:   TRIG
+18:   ECHO
+17:   LEADER (pullup to 5V == Station #0. pulldown to GND == follower)
 
-TRIG, ECHO: Any of these (just pick two, and be consistent):
-// 22 & 23 have PWM, might want to use those somewhere else?
-17, 18, 19, 22, 23
+> The short and easy answer is that you want a resistor value on the order of 10kΩ for the pull-up.
 
+> A typical pull-up resistor value is 4.7kΩ
+
+// 22 & 23 have PWM
 
 
 

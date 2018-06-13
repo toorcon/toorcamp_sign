@@ -21,6 +21,9 @@
 #define DEBUG_STATE        (false)
 #define SERIAL_PRINT_RUN   (false)
 
+// Higher == faster.  6.0f==full change over 1/6th second
+#define SENSOR_SMOOTHING   (6.0f)
+
 // Shortcuts for operator functions
 #define f0                 (f(0))
 #define f1                 (f(1))
@@ -102,12 +105,13 @@ float led_y[LED_COUNT];
 float led_local_angle[LED_COUNT];
 
 // Special vars, floats set at runtime
-unsigned long lastMillis = 0;
 float vTime = 0.0f;	// in seconds
 float vStationID = 0.0f;
 float vLEDIndex = 0.0f;
 float vLEDRatio = 0.0f;
 float vLEDCount = 60.0f;
+float vUltrasonicCM = 0.0f;
+float vUltrasonicCM_dest = 0.0f;
 uint16_t computeLED = 0;
 
 //
@@ -862,6 +866,12 @@ void serial_arg_read_buf(uint8_t x)
 		}
 		break;
 
+		case 'U': {
+			current_arg->fp = &vUltrasonicCM;
+			current_arg->type = k_float_ptr;
+		}
+		break;
+
 		/*
 		case 'L': {
 			if (buf[1] == 'X') {
@@ -1043,15 +1053,16 @@ LineResult computer_input_from_downstream(uint8_t x)
 }
 */
 
-void computer_run()
+void computer_run(uint16_t elapsedMillis)
 {
-	unsigned long m = millis();
-	vTime += (uint16_t)(m - lastMillis) * (1.0f / 1000.0f);
-	lastMillis = m;
+	float elapsed_f = elapsedMillis * (1.0f / 1000.0f);
+	vTime += elapsed_f;
 
 	vLEDIndex = 0.0f;
 	vLEDRatio = 0.0f;
 	float ratioInc = 1.0f / vLEDCount;
+
+	vUltrasonicCM = lerp(vUltrasonicCM, vUltrasonicCM_dest, min(elapsed_f * SENSOR_SMOOTHING, 1.0f));
 
 	for (computeLED = 0; computeLED < LED_COUNT; computeLED++) {
 
@@ -1087,6 +1098,10 @@ void computer_run()
 
 BlinkType computer_get_blink_type() {
 	return blink_type;
+}
+
+void computer_set_ultrasonic_cm(float cm) {
+	vUltrasonicCM_dest = cm;
 }
 
 #endif
