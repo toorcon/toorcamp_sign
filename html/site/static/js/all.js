@@ -61,7 +61,7 @@
 /******/ 	
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "8061253f99fd6a1376fa"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "277746ea8450742df96b"; // eslint-disable-line no-unused-vars
 /******/ 	var hotRequestTimeout = 10000;
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
@@ -787,11 +787,10 @@ const SPECIAL_VARS = {
 	"X": "global X position",
 	"Y": "global Y position",
 	"LX": "X position within the letter",
-	"A": "angle that LED is facing (theta)",
-	"GA": "global angle (from center of sign)",
-	"LA": "local angle (from center of letter)",
-	"IN": "true if inside letter (hole)",
-	"OT": "true if outside letter (outer edge)"
+	//"GA": "global angle (from center of sign)",
+	"LA": "local angle (from center of letter)"
+	//"IN": "true if inside letter (hole)",
+	//"OT": "true if outside letter (outer edge)",
 };
 
 // Code will execute in order

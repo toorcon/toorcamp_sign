@@ -90,12 +90,11 @@ const SPECIAL_VARS = {
 	"P": "ratio of LED on strand (==I/C)",
 	"X": "global X position",
 	"Y": "global Y position",
-	"LX": "X position within the letter",
-	"A": "angle that LED is facing (theta)",
-	"GA": "global angle (from center of sign)",
-	"LA": "local angle (from center of letter)",
-	"IN": "true if inside letter (hole)",
-	"OT": "true if outside letter (outer edge)",
+	"A": "global angle (from center of sign)",
+	//"LX": "X position within the letter",
+	//"LA": "local angle (from center of letter)",
+	//"IN": "true if inside letter (hole)",
+	//"OT": "true if outside letter (outer edge)",
 };
 
 // Code will execute in order

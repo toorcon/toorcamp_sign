@@ -14,6 +14,15 @@ t = T * 0.1 + P;
 led = rgb(0, 0, noise2(t, t * 4.7))
 
 
+// LED position map test
+t = T * 0.1;
+x = tri(X * 0.5 + t + 0.5);
+x *= x * x;
+y = tri(Y * 0.5 + t);
+y *= y * y;
+led = rgb(x, 0, y)
+
+
 
 
 // Op precedence bug: Does (4 - 8) first
