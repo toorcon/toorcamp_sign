@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <OctoWS2811.h>
+#include "led_layout.h"
 
 #define MAX_LINE_LEN       (32)
 #define MAX_STEPS          (20)
@@ -48,12 +49,18 @@ typedef enum {
 	k_blink_station_id = 3
 } BlinkType;
 
+typedef enum {
+	k_float,
+	k_float_ptr,
+	k_array_of_floats
+} ArgType;
+
 typedef struct arg {
 	union {
 		float f;
 		float * fp;
 	};
-	bool is_fp;
+	ArgType type;
 } Arg;
 
 // Gamma + brightness LUT
@@ -85,9 +92,14 @@ float float_dec = 1.0f;
 uint8_t buf[2];
 
 // Global vars, received as bytes over serial
-uint8_t station_id = 0;
+uint8_t station_id = 0xff;
 uint8_t step_count = 0;
 OctoWS2811 * _leds;
+
+// LED layout
+float led_x[LED_COUNT];
+float led_y[LED_COUNT];
+float led_local_angle[LED_COUNT];
 
 // Special vars, floats set at runtime
 unsigned long lastMillis = 0;
@@ -96,14 +108,6 @@ float vStationID = 0.0f;
 float vLEDIndex = 0.0f;
 float vLEDRatio = 0.0f;
 float vLEDCount = 60.0f;
-float vGlobalX = 0.0f;
-float vGlobalY = 0.0f;
-float vStationX = 0.0f;
-float vLEDAngle = 0.0f;
-float vGlobalAngle = 0.0f;
-float vStationAngle = 0.0f;
-float vInside = 0.0f;
-float vOutside = 1.0f;
 uint16_t computeLED = 0;
 
 //
@@ -128,6 +132,16 @@ void serial_wait_for_newline(uint8_t x);
 //
 // PERSISTENT STATE
 //
+
+void set_station_id(uint8_t x) {
+	// Do not set if redundant
+	if (x == station_id) return;
+
+	station_id = x;
+	vStationID = (float)station_id;
+
+	led_layout_set_all(station_id, led_x, led_y, led_local_angle);
+}
 
 float accum[ACCUMULATOR_COUNT][LED_COUNT];
 
@@ -266,7 +280,15 @@ Arg * compute_arg0 = NULL;
 inline float f(uint8_t idx)
 {
 	Arg * arg = &compute_arg0[idx];
-	return (arg->is_fp) ? (*(arg->fp)) : (arg->f);
+
+	if (arg->type == k_float_ptr) {
+		return (*(arg->fp));
+
+	} else if (arg->type == k_array_of_floats) {
+		return arg->fp[computeLED];
+	}
+
+	return arg->f;
 }
 
 float op_add() { return f0 + f1; }
@@ -596,8 +618,10 @@ void serial_read_data_type(uint8_t x)
 		case 'i':
 		{
 			// Infer station_if from buf[0]
-			station_id = (STATION_COUNT - 1) - (upstreamBuf[0] - '0');
-			vStationID = (float)station_id;
+			uint8_t new_id = (STATION_COUNT - 1) - (upstreamBuf[0] - '0');
+
+			set_station_id(new_id);
+
 			serial_fp = serial_wait_for_newline;
 		}
 		break;
@@ -634,7 +658,7 @@ void serial_read_step_number(uint8_t x) {
 	// Clear args
 	for (uint8_t i = 0; i < ARG_COUNT; i++) {
 		args[step_idx][i].f = 0.0f;
-		args[step_idx][i].is_fp = false;
+		args[step_idx][i].type = k_float;
 	}
 
 	if (DEBUG_STATE) {
@@ -717,7 +741,7 @@ void serial_arg_start(uint8_t x)
 
 	// Numeric?
 	if (('0' <= x) && (x <= '9')) {
-		current_arg->is_fp = false;
+		current_arg->type = k_float;
 		current_arg->f = (float)(x - '0');
 		serial_fp = serial_arg_read_float;
 		float_dec = 1.0f;	// Reading the whole part of the number
@@ -772,47 +796,96 @@ void serial_arg_read_buf(uint8_t x)
 
 	switch (buf[0]) {
 		// Point to a computed value (from a previous step)
-		case 'v': {current_arg->fp = &values[x - '!']; break;}
-		case 'T': {current_arg->fp = &vTime; break;}
-		case 'S': {current_arg->fp = &vStationID; break;}
+		case 'v': {
+			current_arg->fp = &values[x - '!'];
+			current_arg->type = k_float_ptr;
+		}
+		break;
+
+		case 'T': {
+			current_arg->fp = &vTime;
+			current_arg->type = k_float_ptr;
+		}
+		break;
+
+		case 'S': {
+			current_arg->fp = &vStationID;
+			current_arg->type = k_float_ptr;
+		}
+		break;
 
 		case 'I': {
 			if (buf[1] == '_') {
 				current_arg->fp = &vLEDIndex;
+				current_arg->type = k_float_ptr;
+
+				/*
 			} else if (buf[1] == 'N') {
 				current_arg->fp = &vInside;
+				current_arg->type = k_float_ptr;
+				*/
+
 			} else {
 				serial_error();
 				return;
 			}
-			break;
 		}
+		break;
 
-		case 'C': {current_arg->fp = &vLEDCount; break;}
-		case 'P': {current_arg->fp = &vLEDRatio; break;}
-		case 'X': {current_arg->fp = &vGlobalX; break;}
-		case 'Y': {current_arg->fp = &vGlobalY; break;}
+		case 'C': {
+			current_arg->fp = &vLEDCount;
+			current_arg->type = k_float_ptr;
+		}
+		break;
 
+		case 'P': {
+			current_arg->fp = &vLEDRatio;
+			current_arg->type = k_float_ptr;
+		}
+		break;
+
+		case 'X': {
+			current_arg->fp = led_x;
+			current_arg->type = k_array_of_floats;
+		}
+		break;
+
+		case 'Y': {
+			current_arg->fp = led_y;
+			current_arg->type = k_array_of_floats;
+		}
+		break;
+
+		case 'A': {
+			current_arg->fp = led_local_angle;
+			current_arg->type = k_array_of_floats;
+		}
+		break;
+
+		/*
 		case 'L': {
 			if (buf[1] == 'X') {
-				current_arg->fp = &vStationX;
+				current_arg->fp = led_x;
+				current_arg->type = k_array_of_floats;
+
 			} else if (buf[1] == 'A') {
-				current_arg->fp = &vStationAngle;
+				current_arg->fp = led_local_angle;
+				current_arg->type = k_array_of_floats;
+
 			} else {
 				serial_error();
 				return;
 			}
 			break;
 		}
+		*/
 
-		case 'A': {current_arg->fp = &vLEDAngle; break;}
-		case 'G': {current_arg->fp = &vGlobalAngle; break;}
-		case 'O': {current_arg->fp = &vOutside; break;}
+		//case 'G': {current_arg->fp = &vGlobalAngle; break;}
+		//case 'O': {current_arg->fp = &vOutside; break;}
 
 		default: {serial_error(); return;}
 	}
 
-	current_arg->is_fp = true;
 	serial_fp = serial_arg_complete;
 }
 
@@ -979,7 +1052,6 @@ void computer_run()
 	vLEDIndex = 0.0f;
 	vLEDRatio = 0.0f;
 	float ratioInc = 1.0f / vLEDCount;
-	vGlobalX = 0.0f;
 
 	for (computeLED = 0; computeLED < LED_COUNT; computeLED++) {
 
@@ -1004,7 +1076,7 @@ void computer_run()
 		// Advance the varying floats
 		vLEDIndex += 1.0f;
 		vLEDRatio += ratioInc;
-		vGlobalX = vLEDIndex;
+
 	}	// !for each LED
 
 	if (DEBUG_STATE) {
