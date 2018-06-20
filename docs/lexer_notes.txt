@@ -2,16 +2,40 @@
 ~~  TODO
 ~~~~~~~~~~~~
 
+
+
+* Node: Produce bytecode that we can copy/paste into the C
+
+led = hsv(T * 0.1 + P, 1, 1)
+
+"c!\ns!*T_,0.1\ns\"+v!,P_\ns#]v\",1,1\nc$\n"
+
+* C: Add ability to parse bytecode string
+
+* Initial brightness is fucked?? Makes weird colors
+
+
+
+
 Lexer tasks:
 (See the casual.pm board)
 
 - Modulo '%' ?
 
 
+// Rainbow test
+led = hsv(T * 0.1 + P * 3, 1, 1);
+
+
+// Rainbow with hue noise
+led = hsv(T * 0.3 + tri(accum0(sin01(P) * 0.001)) * 0.2, 1, 1)
+
+
 
 // Noise test
 t = T * 0.1 + P;
 led = rgb(0, 0, noise2(t, t * 4.7))
+
 
 
 // LED position map test
@@ -24,8 +48,12 @@ led = rgb(x, 0, y)
 
 
 
+// Rainbow contrast test
+led = hsv(T * 0.3 + P * 3, 1, sin01(T + P * 16))
 
-// Op precedence bug: Does (4 - 8) first
+
+
+// BUG: Op precedence: Does (4 - 8) first
 led = rgb(0, peak(P * 4 - 8), 0)
 
 
@@ -55,7 +83,7 @@ Total modules: 807
 
 
 Power:
-12VDC power, 0.72W
+12VDC power, 0.72W per LED module
 
 'M' is 105.84 Watts, or 8.82 amps
 

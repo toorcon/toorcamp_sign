@@ -10,8 +10,7 @@
 #define MAX_LINE_LEN       (32)
 #define MAX_STEPS          (20)
 #define ARG_COUNT          (3)
-#define STATION_COUNT      (3)
-#define LED_COUNT          (72)
+#define STATION_COUNT      (8)
 #define ACCUMULATOR_COUNT  (1)
 #define NOISE_SIZE         (16)
 
@@ -107,7 +106,7 @@ float vTime = 0.0f;	// in seconds
 float vStationID = 0.0f;
 float vLEDIndex = 0.0f;
 float vLEDRatio = 0.0f;
-float vLEDCount = 60.0f;
+float vLEDCount = (float)(LED_COUNT);
 uint16_t computeLED = 0;
 
 //

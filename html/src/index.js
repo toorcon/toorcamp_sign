@@ -472,7 +472,11 @@ function parseInput(input)
 function sendToServer()
 {
 	// Temporarily skip expecution
-	sendMessageToRing("c!");
+	var bytecodeAr = [];
+
+	var zeroSteps = "c!";
+	sendMessageToRing(zeroSteps);
+	bytecodeAr.push(zeroSteps);
 
 	for (var i = 0; i < steps.length; i++) {
 		var line = 's' + String.fromCharCode(33 + i);
@@ -508,10 +512,20 @@ function sendToServer()
 		line += args.join(',');
 
 		sendMessageToRing(line);
+		bytecodeAr.push(line);
 	}
 
 	// Send the number of steps
-	sendMessageToRing("c" + String.fromCharCode(33 + steps.length));
+	var stepCount = "c" + String.fromCharCode(33 + steps.length);
+	sendMessageToRing(stepCount);
+	bytecodeAr.push(stepCount);
+
+	// Escape characters for copy-paste into C
+	var escaped = _.map(bytecodeAr, function(s){
+		return s.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+	});
+
+	$('#bytecodeTextarea').text('"' + escaped.join("\\n") + '\\n"');
 }
 
 var _lastInput = "";
@@ -604,6 +618,14 @@ function sendStationID() {
 	setTimeout(sendStationID, 5000);
 }
 
+function copyBytecodeClick(event) {
+	console.log("copyBytecodeClick");
+
+	$('#bytecodeTextarea').select();
+
+	document.execCommand('copy');
+}
+
 $(document).ready(function(){
 	var ref = '<p>HANDY REFERENCE</p>';
 	ref += '<p><b>OPERATORS:</b> ' + OPERATOR_REF + '</p>';
@@ -621,6 +643,7 @@ $(document).ready(function(){
 	$('#isGamma').on('change', gammaBrightChange);
 	$('#bright').on('input', gammaBrightChange);
 	$('#blink').on('change', blinkChange);
+	$('#copyBytecode').on('click', copyBytecodeClick);
 
 	startSocket();
 

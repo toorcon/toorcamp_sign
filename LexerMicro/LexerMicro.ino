@@ -4,13 +4,16 @@
 
 #include <stdint.h>
 #include <OctoWS2811.h>
+
+#define LEDS_PER_STRIP  (20)
+#define LED_COUNT       (LEDS_PER_STRIP * 3)
 #include "computer.h"
 
-#define SERIAL_FORMAT  (SERIAL_8N1)
+#define SERIAL_FORMAT   (SERIAL_8N1)
 // Downstream: Down to slave microcontrollers
-#define RINGSERIAL     Serial1
-#define RING_TX        (1)
-#define RING_RX        (0)
+#define RINGSERIAL      Serial1
+#define RING_TX         (1)
+#define RING_RX         (0)
 
 #define LEVEL_SHIFTER_OE_PIN   (3)
 
@@ -19,14 +22,38 @@ uint8_t frameCount = 0;
 uint8_t blinkCount = 0;
 
 int LED_STRIP_PIN = 17;	// Teensy LC
-const int ledsPerStrip = 72;
+const int ledsPerStrip = 20;
 DMAMEM int displayMemory[ledsPerStrip * 6];
 int drawingMemory[ledsPerStrip * 6];
-const int config = WS2811_GRB | WS2811_800kHz;
+const int config = WS2811_RBG | WS2811_800kHz;
 OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 
 // Arduino Uno: 19200 baud works, 57600 definitely does not.
 const int BAUD_RATE = 9600;
+
+const char * ATTRACT = "c!\ns!*T_,1\ns\"+v!,P_\ns#]v\",1,1\nc$\n";
+
+void run_attract_string(const char * str)
+{
+	bool sendLifespan = true;
+
+	while ((*str) != '\0') {
+		if (sendLifespan) {
+			computer_input_from_upstream('0' + (STATION_COUNT - 1));
+			sendLifespan = false;
+		}
+
+		char ch = (*str);
+		if (ch == '\n') {
+			sendLifespan = true;
+		}
+
+		computer_input_from_upstream(ch);
+
+		// Advance to next character
+		str++;
+	}
+}
 
 // the setup routine runs once when you press reset:
 void setup() {
@@ -47,6 +74,8 @@ void setup() {
 	leds.show();
 
 	computer_init(&leds);
+
+	run_attract_string(ATTRACT);
 }
 
 void test_serial_string(String str)

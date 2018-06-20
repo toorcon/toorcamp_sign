@@ -41,6 +41,13 @@ textarea#input {
 	color: #000;
 }
 
+#bytecode {
+	width: 100%;
+	border: 1px solid grey;
+	color: #fff;
+	background-color: #000;
+}
+
 table {
 	width: 100%;
 }
