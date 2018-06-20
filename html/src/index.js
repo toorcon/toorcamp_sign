@@ -107,6 +107,18 @@ var varNames = {};
 
 var client = null;
 
+String.prototype.hexEncode = function(){
+	var hex, i;
+
+	var result = "";
+	for (i=0; i<this.length; i++) {
+		hex = this.charCodeAt(i).toString(16);
+		result += "\\x" + ("00"+hex).slice(-2);
+	}
+
+	return result
+}
+
 function isSendEnabledChecked() {
 	return $('#sendEnabled').get(0).checked;
 }
@@ -520,12 +532,14 @@ function sendToServer()
 	sendMessageToRing(stepCount);
 	bytecodeAr.push(stepCount);
 
-	// Escape characters for copy-paste into C
-	var escaped = _.map(bytecodeAr, function(s){
-		return s.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
-	});
+	// Inject gamma & brightness
+	var gammaInjection = getGammaBrightInstruction();
+	bytecodeAr.splice(1, 0, gammaInjection);
 
-	$('#bytecodeTextarea').text('"' + escaped.join("\\n") + '\\n"');
+	var longLine = bytecodeAr.join("\n") + "\n";
+	var escaped = longLine.hexEncode();
+
+	$('#bytecodeTextarea').text('"' + escaped + '"');
 }
 
 var _lastInput = "";
@@ -551,9 +565,7 @@ function resetTimeClick(event) {
 	sendMessageToRing("t");
 }
 
-// Gamma + brightness:
-// 0bx1xxxGBB 0bx1BBBBBB
-function gammaBrightChange(event) {
+function getGammaBrightInstruction() {
 	var isGamma = $('#isGamma').get(0).checked;
 	var bright8 = parseInt($('#bright').val());
 
@@ -562,6 +574,13 @@ function gammaBrightChange(event) {
 
 	var msg = 'g' + String.fromCharCode(b0) + String.fromCharCode(b1);
 
+	return msg;
+}
+
+// Gamma + brightness:
+// 0bx1xxxGBB 0bx1BBBBBB
+function gammaBrightChange(event) {
+	var msg = getGammaBrightInstruction();
 	sendMessageToRing(msg);
 }
 
@@ -613,7 +632,7 @@ function startSocket() {
 }
 
 function sendStationID() {
-	sendMessageToRing("i");
+	//sendMessageToRing("i");
 
 	setTimeout(sendStationID, 5000);
 }

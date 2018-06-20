@@ -91,7 +91,7 @@ float float_dec = 1.0f;
 uint8_t buf[2];
 
 // Global vars, received as bytes over serial
-uint8_t station_id = 0xff;
+uint8_t station_id = 0xff;	// set with set_station_id() plz
 uint8_t step_count = 0;
 OctoWS2811 * _leds;
 
@@ -101,7 +101,6 @@ float led_y[LED_COUNT];
 float led_local_angle[LED_COUNT];
 
 // Special vars, floats set at runtime
-unsigned long lastMillis = 0;
 float vTime = 0.0f;	// in seconds
 float vStationID = 0.0f;
 float vLEDIndex = 0.0f;
@@ -969,6 +968,7 @@ void serial_wait_for_newline(uint8_t x)
 
 void computer_init(OctoWS2811 * inLEDs) {
 	randomSeed(1337);
+	set_station_id(STATION_ID);
 	reset_time_and_accumulators();
 	reroll_noise();
 	set_gamma_and_brightness(DEFAULT_GAMMA, DEFAULT_BRIGHT);
@@ -1042,11 +1042,10 @@ LineResult computer_input_from_downstream(uint8_t x)
 }
 */
 
-void computer_run()
+void computer_run(uint16_t elapsedMillis)
 {
-	unsigned long m = millis();
-	vTime += (uint16_t)(m - lastMillis) * (1.0f / 1000.0f);
-	lastMillis = m;
+	float elapsed_f = elapsedMillis * (1.0f / 1000.0f);
+	vTime += elapsed_f;
 
 	vLEDIndex = 0.0f;
 	vLEDRatio = 0.0f;

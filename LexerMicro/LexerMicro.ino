@@ -5,17 +5,25 @@
 #include <stdint.h>
 #include <OctoWS2811.h>
 
+#define STATION_ID      (0)
+
 #define LEDS_PER_STRIP  (20)
 #define LED_COUNT       (LEDS_PER_STRIP * 3)
+
+#include "attract.h"
 #include "computer.h"
 
 #define SERIAL_FORMAT   (SERIAL_8N1)
-// Downstream: Down to slave microcontrollers
+#define USB             Serial
 #define RINGSERIAL      Serial1
 #define RING_TX         (1)
 #define RING_RX         (0)
 
 #define LEVEL_SHIFTER_OE_PIN   (3)
+
+#define ATTRACT_ANIM_MILLIS_MIN    (11000)
+#define ATTRACT_ANIM_MILLIS_MAX    (15000)
+#define ACTIVE_USER_TIMEOUT_MILLIS (120000)
 
 int BLINK_PIN = 13;
 uint8_t frameCount = 0;
@@ -28,18 +36,22 @@ int drawingMemory[ledsPerStrip * 6];
 const int config = WS2811_RBG | WS2811_800kHz;
 OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 
+unsigned long lastMillis = 0;
+//uint16_t millisSinceSensor = ULTRASONIC_INTERVAL_MS;
+
 // Arduino Uno: 19200 baud works, 57600 definitely does not.
 const int BAUD_RATE = 9600;
 
-const char * ATTRACT = "c!\ns!*T_,1\ns\"+v!,P_\ns#]v\",1,1\nc$\n";
+int16_t attractIndex = -1;
+int32_t millisUntilAttract = ATTRACT_ANIM_MILLIS_MIN;
 
-void run_attract_string(const char * str)
+void run_attract_string(const char * str, const uint8_t lifespan)
 {
 	bool sendLifespan = true;
 
 	while ((*str) != '\0') {
 		if (sendLifespan) {
-			computer_input_from_upstream('0' + (STATION_COUNT - 1));
+			computer_input_from_upstream('0' + lifespan);
 			sendLifespan = false;
 		}
 
@@ -58,7 +70,7 @@ void run_attract_string(const char * str)
 // the setup routine runs once when you press reset:
 void setup() {
 	// USB to computer
-	Serial.begin(BAUD_RATE);
+	USB.begin(BAUD_RATE);
 
 	pinMode(LEVEL_SHIFTER_OE_PIN, OUTPUT);
 	digitalWrite(LEVEL_SHIFTER_OE_PIN, LOW);
@@ -75,7 +87,10 @@ void setup() {
 
 	computer_init(&leds);
 
-	run_attract_string(ATTRACT);
+	lastMillis = millis();
+
+	// Default: Run the first attract animation
+	run_attract_string(ATTRACT_MODES[0], 0);
 }
 
 void test_serial_string(String str)
@@ -115,16 +130,31 @@ void serial_input(uint8_t b) {
 void loop() {
 	leds.show();
 
-	// Test!
-	/*
-	test_serial_string("i!\n");
-	test_serial_string("s!+3.45,5\n");
-	test_serial_string("s\"*v!,3\n");
-	test_serial_string("c#\n");
-	*/
+	unsigned long now = millis();
+	uint16_t elapsed = now - lastMillis;
+	lastMillis = now;
+
+	// User input: disables attract mode, for a little while
+	if (STATION_ID == 0) {
+		if ((USB.available() > 0) || (RINGSERIAL.available() > 0)) {
+			millisUntilAttract = ACTIVE_USER_TIMEOUT_MILLIS;
+		}
+
+		// New attract mode?
+		millisUntilAttract -= elapsed;
+		if (millisUntilAttract <= 0) {
+			millisUntilAttract = lerp(ATTRACT_ANIM_MILLIS_MIN, ATTRACT_ANIM_MILLIS_MAX, randf());
+
+			// FIXME: array length
+			attractIndex = (attractIndex + 1) % ATTRACT_MODES_LEN;
+
+			run_attract_string(ATTRACT_MODES[attractIndex], STATION_COUNT - 1);
+			//run_attract_string(TEST, 7);
+		}
+	}
 
 	// From Serial: From the laptop/programmer
-	while (Serial.available() > 0) {
+	while (USB.available() > 0) {
 		// read the incoming byte:
 		uint8_t b = Serial.read();
 		serial_input(b);
@@ -137,40 +167,7 @@ void loop() {
 		serial_input(b);
 	}
 
-	// From DOWNSTREAM: other micros can send sensor data
-	// upstream.
-	/*
-	// TODO
-	while (UPSTREAM.available() > 0) {
-		// read the incoming byte:
-		uint8_t b = UPSTREAM.read();
-		computer_serial_input(b);
-
-		// Pass down the line
-		DOWNSTREAM.write(b);
-	}
-	*/
-
-	computer_run();
-
-	/*
-	// Hmm.
-	DOWNSTREAM.write('H');
-	DOWNSTREAM.write('i');
-	DOWNSTREAM.write('\n');
-	delay(1000);
-	*/
-
-	/*
-	while (UPSTREAM.available() > 0) {
-		char b = UPSTREAM.read();
-		if (b == '\n') {
-			Serial.println(b);
-		} else {
-			Serial.print(b);
-		}
-	}
-	*/
+	computer_run(elapsed);
 
 	// Blink to prove we're alive.
 	// Blinks once every 60 frames. If blink rate is >1/sec, frame rate is good!

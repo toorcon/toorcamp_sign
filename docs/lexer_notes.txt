@@ -4,16 +4,11 @@
 
 
 
-* Node: Produce bytecode that we can copy/paste into the C
+* USB is a separate buffer
 
-led = hsv(T * 0.1 + P, 1, 1)
+* Only the leader should run attract mode
 
-"c!\ns!*T_,0.1\ns\"+v!,P_\ns#]v\",1,1\nc$\n"
-
-* C: Add ability to parse bytecode string
-
-* Initial brightness is fucked?? Makes weird colors
-
+* ramp() function
 
 
 
