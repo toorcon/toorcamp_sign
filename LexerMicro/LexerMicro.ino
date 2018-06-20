@@ -100,8 +100,14 @@ void test_serial_string(String str)
 	}
 }
 
-void serial_input(uint8_t b) {
-	LineResult result = computer_input_from_upstream(b);
+void serial_input(uint8_t b, bool isUsb) {
+	LineResult result;
+
+	if (isUsb) {
+		result = computer_input_from_usb(b);
+	} else {
+		result = computer_input_from_upstream(b);
+	}
 
 	//Serial.println(result);
 
@@ -115,15 +121,6 @@ void serial_input(uint8_t b) {
 			RINGSERIAL.write(b - 1);
 		}
 	}
-
-	/*
-	} else if (result == k_line_set_station_id) {
-		// Increment station_id and pass it to next station.
-		DOWNSTREAM.write('i');
-		DOWNSTREAM.write('0' + computer_get_station_id() + 1);
-		DOWNSTREAM.write('\n');
-	}
-	*/
 }
 
 // the loop routine runs over and over again forever:
@@ -157,14 +154,14 @@ void loop() {
 	while (USB.available() > 0) {
 		// read the incoming byte:
 		uint8_t b = Serial.read();
-		serial_input(b);
+		serial_input(b, true);
 	}
 
 	// From UPSTREAM: From the microprocessor 1 higher
 	while (RINGSERIAL.available() > 0) {
 		// read the incoming byte:
 		uint8_t b = RINGSERIAL.read();
-		serial_input(b);
+		serial_input(b, false);
 	}
 
 	computer_run(elapsed);

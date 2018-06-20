@@ -77,11 +77,9 @@ float values[MAX_STEPS];	// Computed values
 uint8_t upstreamBuf[MAX_LINE_LEN];
 uint16_t upstreamIdx = 0;
 
-/*
 // Data from downstream, heading up
-uint8_t downstreamBuf[MAX_LINE_LEN];
-uint16_t downstreamIdx = 0;
-*/
+uint8_t usbBuf[MAX_LINE_LEN];
+uint16_t usbIdx = 0;
 
 // Incoming data: State machine
 void (*serial_fp)(uint8_t);
@@ -1029,18 +1027,16 @@ LineResult computer_input_from_upstream(uint8_t x)
 	return result;
 }
 
-/*
-LineResult computer_input_from_downstream(uint8_t x)
+LineResult computer_input_from_usb(uint8_t x)
 {
-	LineResult result = _input_from_stream(downstreamBuf, &downstreamIdx, x);
+	LineResult result = _input_from_stream(usbBuf, &usbIdx, x);
 
-	if ((result == k_line_end) || (result == k_line_set_station_id)) {
-		downstreamIdx = 0;
+	if (result == k_line_end) {
+		usbIdx = 0;
 	}
 
 	return result;
 }
-*/
 
 void computer_run(uint16_t elapsedMillis)
 {

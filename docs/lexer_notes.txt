@@ -6,8 +6,6 @@
 
 * USB is a separate buffer
 
-* Only the leader should run attract mode
-
 * ramp() function
 
 
