@@ -146,7 +146,7 @@ function sendMessageToRing(msg, options) {
 		}
 
 	} else {
-		var lifespan = "2";
+		var lifespan = "7";
 		var out = lifespan + msg + "\n";
 		console.log(status, out);
 

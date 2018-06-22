@@ -6,18 +6,23 @@
 #define TWOPI (6.283185f)
 
 // Width: Include padding between stations
-#define STATION_LED_WIDTH     (18)
-#define STATION_LED_HEIGHT    (18)
+#define STATION_LED_WIDTH     (16)
+#define STATION_LED_HEIGHT    (19)
 
 // Longest LED run length
-#define RL   (18)
+#define RL   (76)
 
 // Directions
-#define X    (0)
-#define U    (1)
-#define R    (2)
-#define D    (3)
-#define L    (4)
+#define X       (0)
+#define U       (1)
+#define R       (2)
+#define D       (3)
+#define L       (4)
+
+// And some sub-steps that don't align to the grid
+#define DL      (5)
+#define DL_2_3  (6)
+#define DR_2_3  (7)
 
 typedef enum {
 	k_read_led_index = 0,
@@ -28,37 +33,121 @@ typedef enum {
 
 typedef uint8_t station_data_t;
 
+// T
 const station_data_t STATION_0[] = {
-	RL*0,  0,  0, R,R,R,R,R, R,R,R,R,R, R,R,R,R,R, R,R,R,X,
-	RL*1, 18,  0, D,D,D,D,D, D,D,D,D,D, D,D,D,D,D, D,D,D,X,
-	RL*2, 18, 18, L,L,L,L,L, L,L,L,L,L, L,L,L,L,L, L,L,L,X,
-	RL*3,  0, 18, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U,X,
+	// Heading left
+	RL*0,  5, 18, L, U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U, L,L, X,
+
+	// Heading right
+	RL*1,  6, 18, U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U, R,R,R,R, U,U, L,L,L,L,L,L,L,L,L,L, D,D, R, X,
+
 	X
 };
 
+// O1
 const station_data_t STATION_1[] = {
-	RL*0,  0,  0, R,R,R,R,R, R,R,R,R,R, R,R,R,R,R, R,R,R,X,
-	RL*1, 18,  0, D,D,D,D,D, D,D,D,D,D, D,D,D,D,D, D,D,D,X,
-	RL*2, 18, 18, L,L,L,L,L, L,L,L,L,L, L,L,L,L,L, L,L,L,X,
-	RL*3,  0, 18, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U,X,
+	// Inside
+	RL*0,  8, 16, L,L,L,L,L,L, U,U,U,U,U,U,U,U,U,U,U,U,U,U, R,R,R,R,R,R, D,D,D,D,D,D,D,D,D,D,D,D,D, X,
+
+	// Outside, going left
+	RL*1, 10, 18, L,L,L,L,L,L,L,L,L,L, U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U, R,R,R,R,R,R,R,R,R,R, D, X,
+
+	// Outside, going up
+	RL*2, 10, 17, U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U, X,
+
 	X
 };
 
+// O2
 const station_data_t STATION_2[] = {
-	RL*0,  0,  0, R,R,R,R,R, R,R,R,R,R, R,R,R,R,R, R,R,R,X,
-	RL*1, 18,  0, D,D,D,D,D, D,D,D,D,D, D,D,D,D,D, D,D,D,X,
-	RL*2, 18, 18, L,L,L,L,L, L,L,L,L,L, L,L,L,L,L, L,L,L,X,
-	RL*3,  0, 18, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U,X,
+	// Outside, going left
+	RL*0,  9, 18, L,L,L,L,L,L,L,L,L, U,U,U,U,U,U,U,U,U,U, X,
+
+	// Inside
+	RL*1,  8, 16, L,L,L,L,L,L, U,U,U,U,U,U,U,U,U,U,U,U,U,U, R,R,R,R,R,R, D,D,D,D,D,D,D,D,D,D,D,D,D, X,
+
+	// Outside, going up
+	RL*2, 10, 18, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, L,L,L,L,L, L,L,L,L,L, D,D,D,D,D,D,D, X,
+
+	X
+};
+
+// R
+const station_data_t STATION_3[] = {
+	// Going up
+	RL*1, 10, 18,  U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, L,L,L,L,L, L,L,L, DL,DL, D,D,D,D, DR_2_3,DR_2_3, X,
+
+	// Around the hole
+	RL*1+35,  2, 7, U,U,U,U,U, R,R,R,R,R,R, D,D,D,D,D,D, L,L,L,L,L, D, X,
+
+	// Going left
+	RL*2,  9, 18,  L, U,U,U,U,U,U,U,U, L,L,L,L,L, DL_2_3,DL_2_3,DL_2_3, D,D,D,D,D,D,D, R,R, U,U,U,U,U,U,U, X,
+
+	X
+};
+
+// C
+const station_data_t STATION_4[] = {
+	// Bottom, going left
+	RL*0,  10, 18, L,L,L,L,L, L,L,L,L,L, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, R,R,R,R,R, R,R,R,R,R, D, X,
+
+	// Going up
+	RL*1,  10, 17, U, L,L,L,L,L, L,L,L, U,U,U,U,U,U,U,U,U,U,U,U,U,U, R,R,R,R,R,R,R,R, X,
+
+	X
+};
+
+// A
+const station_data_t STATION_5[] = {
+	// Going right
+	RL*0,  9, 18, R, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, X,
+
+	// Jumps to the center
+	RL*0+20,  8, 2, L,L,L,L,L,L, D,D,D,D,D,D, R,R,R,R,R,R, U,U,U,U,U, X,
+
+	// Going up
+	RL*2,  8, 18, U,U,U,U,U,U,U,U, L,L,L,L,L,L, D,D,D,D,D,D,D,D, L,L, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, R,R,R,R,R,R,R,R,R, X,
+
+	X
+};
+
+// It's the huge M oh lord
+const station_data_t STATION_6[] = {
+	// Going left
+	RL*0,  9, 18, L, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U, L,L,L,L,L,L, D,D,D,D,D, D,D,D,D,D, D,D,D,D,D, D, L,L, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, R,R,R,R,R, R,R,R,R,R, R,R,R,R,R,R, X,
+
+	// Going up
+	RL*2,  8, 18, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U, R,R,R,R,R,R, D,D,D,D,D, D,D,D,D,D, D,D,D,D,D, D, R,R, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, L, X,
+
+	X
+};
+
+// P
+const station_data_t STATION_7[] = {
+	// Going left
+	RL*2, 1, 18, L, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, R,R,R,R,R, R,R,R,R,R, D,D,D,D,D,D, X,
+
+	// Going up
+	RL*1, 2, 18, U,U,U,U,U, U,U,U, R,R,R,R,R, R,R,R, U,U,U, X,
+
+	// Jumps to the middle
+	RL*1+20,  8, 7, D, L,L,L,L,L,L, U,U,U,U,U,U, R,R,R,R,R,R, D,D,D,D, X,
+
 	X
 };
 
 const station_data_t * STATIONS[] = {
 	STATION_0,
 	STATION_1,
-	STATION_2
+	STATION_2,
+	STATION_3,
+	STATION_4,
+	STATION_5,
+	STATION_6,
+	STATION_7
 };
 
-void _set_led_position(int16_t x, int16_t y, float * x_ptr, float * y_ptr, float * local_angle_ptr)
+void _set_led_position(float x, float y, float * x_ptr, float * y_ptr, float * local_angle_ptr)
 {
 	*x_ptr = x * (1.0f / STATION_LED_WIDTH);
 	*y_ptr = y * (1.0f / STATION_LED_HEIGHT);
@@ -76,8 +165,8 @@ void led_layout_set_all(uint8_t station_id, float * x_ar, float * y_ar, float * 
 
 	LayoutState state = k_read_led_index;
 	uint8_t led_index = 0;
-	int16_t x;
-	int16_t y;
+	float x;
+	float y;
 
 	for (uint16_t i = 0; i < 999; i++) {
 		switch (state) {
@@ -122,6 +211,18 @@ void led_layout_set_all(uint8_t station_id, float * x_ar, float * y_ar, float * 
 				else if (data[i] == R) {x++;}
 				else if (data[i] == U) {y--;}
 				else if (data[i] == D) {y++;}
+				else if (data[i] == DL) {
+					x--;
+					y++;
+				}
+				else if (data[i] == DL_2_3) {
+					x -= 1.333f;
+					y += 1.333f;
+				}
+				else if (data[i] == DR_2_3) {
+					x += 1.333f;
+					y += 1.333f;
+				}
 
 				led_index++;
 

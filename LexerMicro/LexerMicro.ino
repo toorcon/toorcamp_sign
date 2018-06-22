@@ -7,7 +7,7 @@
 
 #define STATION_ID      (0)
 
-#define LEDS_PER_STRIP  (20)
+#define LEDS_PER_STRIP  (76)
 #define LED_COUNT       (LEDS_PER_STRIP * 3)
 
 #include "attract.h"
@@ -30,11 +30,10 @@ uint8_t frameCount = 0;
 uint8_t blinkCount = 0;
 
 int LED_STRIP_PIN = 17;	// Teensy LC
-const int ledsPerStrip = 20;
-DMAMEM int displayMemory[ledsPerStrip * 6];
-int drawingMemory[ledsPerStrip * 6];
+DMAMEM int displayMemory[LEDS_PER_STRIP * 6];
+int drawingMemory[LEDS_PER_STRIP * 6];
 const int config = WS2811_RBG | WS2811_800kHz;
-OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
+OctoWS2811 leds(LEDS_PER_STRIP, displayMemory, drawingMemory, config);
 
 unsigned long lastMillis = 0;
 //uint16_t millisSinceSensor = ULTRASONIC_INTERVAL_MS;

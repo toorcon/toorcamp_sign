@@ -4,6 +4,37 @@
 
 
 
+// 1st strip
+led = hsv(T * 0.1 + P, 1, (I < 76) ? 1 : 0)
+
+// 2nd strip // ugh some code error here, lights up 2 strips
+led = hsv(T * 0.1 + P, 1, ((76 <= I) && (I < 152)) ? 1 : 0)
+
+// 3rd strip
+led = hsv(T * 0.1 + P, 1, (152 <= I) ? 1 : 0)
+
+
+
+// X & Y test
+speed = 0.15;
+x = tri(X * 0.5 + T * speed);
+y = tri(Y * 0.5 + T * speed + 0.5);
+x *= x;
+x *= x;
+x *= x;
+y *= y;
+y *= y;
+y *= y;
+led = rgb(x, 0, y)
+
+
+
+
+// Blinky blue sassiness
+led = rgb(0, 0, sin01(T * 3 + P * 100))
+
+
+
 * USB is a separate buffer
 
 * ramp() function
