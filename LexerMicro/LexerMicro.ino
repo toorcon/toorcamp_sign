@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <OctoWS2811.h>
 
-#define STATION_ID      (0)
+#define STATION_ID      (6)
 
 #define LEDS_PER_STRIP  (76)
 #define LED_COUNT       (LEDS_PER_STRIP * 3)

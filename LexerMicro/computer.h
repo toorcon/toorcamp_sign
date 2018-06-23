@@ -8,7 +8,7 @@
 #include "led_layout.h"
 
 #define MAX_LINE_LEN       (32)
-#define MAX_STEPS          (20)
+#define MAX_STEPS          (50)
 #define ARG_COUNT          (3)
 #define STATION_COUNT      (8)
 #define ACCUMULATOR_COUNT  (1)

@@ -61,7 +61,7 @@
 /******/ 	
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "fc745356941646ebab6c"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "75866601f200ef4e7bbc"; // eslint-disable-line no-unused-vars
 /******/ 	var hotRequestTimeout = 10000;
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
@@ -803,6 +803,18 @@ var varNames = {};
 
 var client = null;
 
+String.prototype.hexEncode = function () {
+	var hex, i;
+
+	var result = "";
+	for (i = 0; i < this.length; i++) {
+		hex = this.charCodeAt(i).toString(16);
+		result += "\\x" + ("00" + hex).slice(-2);
+	}
+
+	return result;
+};
+
 function isSendEnabledChecked() {
 	return $('#sendEnabled').get(0).checked;
 }
@@ -829,7 +841,7 @@ function sendMessageToRing(msg, options) {
 			client.send(msg);
 		}
 	} else {
-		var lifespan = "2";
+		var lifespan = "7";
 		var out = lifespan + msg + "\n";
 		console.log(status, out);
 
@@ -1163,7 +1175,11 @@ function parseInput(input) {
 
 function sendToServer() {
 	// Temporarily skip expecution
-	sendMessageToRing("c!");
+	var bytecodeAr = [];
+
+	var zeroSteps = "c!";
+	sendMessageToRing(zeroSteps);
+	bytecodeAr.push(zeroSteps);
 
 	for (var i = 0; i < steps.length; i++) {
 		var line = 's' + String.fromCharCode(33 + i);
@@ -1199,10 +1215,22 @@ function sendToServer() {
 		line += args.join(',');
 
 		sendMessageToRing(line);
+		bytecodeAr.push(line);
 	}
 
 	// Send the number of steps
-	sendMessageToRing("c" + String.fromCharCode(33 + steps.length));
+	var stepCount = "c" + String.fromCharCode(33 + steps.length);
+	sendMessageToRing(stepCount);
+	bytecodeAr.push(stepCount);
+
+	// Inject gamma & brightness
+	var gammaInjection = getGammaBrightInstruction();
+	bytecodeAr.splice(1, 0, gammaInjection);
+
+	var longLine = bytecodeAr.join("\n") + "\n";
+	var escaped = longLine.hexEncode();
+
+	$('#bytecodeTextarea').text('"' + escaped + '"');
 }
 
 var _lastInput = "";
@@ -1227,9 +1255,7 @@ function resetTimeClick(event) {
 	sendMessageToRing("t");
 }
 
-// Gamma + brightness:
-// 0bx1xxxGBB 0bx1BBBBBB
-function gammaBrightChange(event) {
+function getGammaBrightInstruction() {
 	var isGamma = $('#isGamma').get(0).checked;
 	var bright8 = parseInt($('#bright').val());
 
@@ -1238,6 +1264,13 @@ function gammaBrightChange(event) {
 
 	var msg = 'g' + String.fromCharCode(b0) + String.fromCharCode(b1);
 
+	return msg;
+}
+
+// Gamma + brightness:
+// 0bx1xxxGBB 0bx1BBBBBB
+function gammaBrightChange(event) {
+	var msg = getGammaBrightInstruction();
 	sendMessageToRing(msg);
 }
 
@@ -1285,9 +1318,17 @@ function startSocket() {
 }
 
 function sendStationID() {
-	sendMessageToRing("i");
+	//sendMessageToRing("i");
 
 	setTimeout(sendStationID, 5000);
+}
+
+function copyBytecodeClick(event) {
+	console.log("copyBytecodeClick");
+
+	$('#bytecodeTextarea').select();
+
+	document.execCommand('copy');
 }
 
 $(document).ready(function () {
@@ -1307,6 +1348,7 @@ $(document).ready(function () {
 	$('#isGamma').on('change', gammaBrightChange);
 	$('#bright').on('input', gammaBrightChange);
 	$('#blink').on('change', blinkChange);
+	$('#copyBytecode').on('click', copyBytecodeClick);
 
 	startSocket();
 
