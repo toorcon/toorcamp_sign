@@ -61,7 +61,7 @@
 /******/ 	
 /******/ 	
 /******/ 	var hotApplyOnUpdate = true;
-/******/ 	var hotCurrentHash = "75866601f200ef4e7bbc"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentHash = "a459545953cd2025fcf8"; // eslint-disable-line no-unused-vars
 /******/ 	var hotRequestTimeout = 10000;
 /******/ 	var hotCurrentModuleData = {};
 /******/ 	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
@@ -1227,8 +1227,17 @@ function sendToServer() {
 	var gammaInjection = getGammaBrightInstruction();
 	bytecodeAr.splice(1, 0, gammaInjection);
 
+	// Prepend each message with a lifespan byte.
+	// We're not going to overheal the entire communications
+	// protocol on the last day of Toorcamp  :P
+	bytecodeAr = _.map(bytecodeAr, function (s) {
+		return "0" + s;
+	});
+
 	var longLine = bytecodeAr.join("\n") + "\n";
 	var escaped = longLine.hexEncode();
+
+	console.log("longLine:", longLine);
 
 	$('#bytecodeTextarea').text('"' + escaped + '"');
 }

@@ -146,7 +146,7 @@ function sendMessageToRing(msg, options) {
 		}
 
 	} else {
-		var lifespan = "7";
+		var lifespan = "8";
 		var out = lifespan + msg + "\n";
 		console.log(status, out);
 
@@ -536,8 +536,18 @@ function sendToServer()
 	var gammaInjection = getGammaBrightInstruction();
 	bytecodeAr.splice(1, 0, gammaInjection);
 
-	var longLine = bytecodeAr.join("\n") + "\n";
+	// Prepend each message with a lifespan byte.
+	// We're not going to overheal the entire communications
+	// protocol on the last day of Toorcamp  :P
+	bytecodeAr = _.map(bytecodeAr, function(s){
+		return "1" + s + "\n";
+	});
+
+	var longLine = bytecodeAr.join("");
 	var escaped = longLine.hexEncode();
+
+	console.log("longLine:", longLine);
+	console.log("split:", longLine.split("\n"));
 
 	$('#bytecodeTextarea').text('"' + escaped + '"');
 }

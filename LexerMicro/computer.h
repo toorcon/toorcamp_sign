@@ -15,7 +15,7 @@
 #define NOISE_SIZE         (16)
 
 #define DEFAULT_GAMMA      (true)
-#define DEFAULT_BRIGHT     (51)
+#define DEFAULT_BRIGHT     (255)
 
 #define DEBUG_STATE        (false)
 #define SERIAL_PRINT_RUN   (false)
@@ -94,6 +94,7 @@ uint8_t step_count = 0;
 OctoWS2811 * _leds;
 
 // LED layout
+bool does_led_exist[LED_COUNT];
 float led_x[LED_COUNT];
 float led_y[LED_COUNT];
 float led_local_angle[LED_COUNT];
@@ -136,7 +137,14 @@ void set_station_id(uint8_t x) {
 	station_id = x;
 	vStationID = (float)station_id;
 
-	led_layout_set_all(station_id, led_x, led_y, led_local_angle);
+	// Optimization: Do not compute LEDs which do not
+	// physically exist on the strand.
+	// Clear does_led_exist[] before setting layout.
+	for (uint16_t i = 0; i < LED_COUNT; i++) {
+		does_led_exist[i] = false;
+	}
+
+	led_layout_set_all(station_id, does_led_exist, led_x, led_y, led_local_angle);
 }
 
 float accum[ACCUMULATOR_COUNT][LED_COUNT];
@@ -570,7 +578,7 @@ void set_gamma_and_brightness(bool isGamma, uint8_t bright) {
 void serial_line_start(uint8_t x)
 {
 	// x must be between '0' and '7'
-	if ((x < '0') || ('7' < x)) {
+	if ((x < '0') || ('8' < x)) {
 		serial_error();
 		return;
 	}
@@ -1048,6 +1056,11 @@ void computer_run(uint16_t elapsedMillis)
 	float ratioInc = 1.0f / vLEDCount;
 
 	for (computeLED = 0; computeLED < LED_COUNT; computeLED++) {
+
+		// Optimization: Only compute LEDs that exist.
+		if (!does_led_exist[computeLED]) {
+			continue;
+		}
 
 		for (uint8_t s = 0; s < step_count; s++) {
 			compute_arg0 = &args[s][0];
