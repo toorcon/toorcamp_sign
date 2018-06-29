@@ -3,11 +3,128 @@
 ~~~~~~~~~~~~
 
 
-// Pride flag!
 
-// Wavy flag
+* Try power cycling! Does it start up correctly (with blinkys)?
+
+* Tweak the other animations
+
+
+
+
+// [0] T
+// Matrix: White tracers
+speed = 1;
+
+m = 1 - frac((T * speed) - (P * 25));
+sat = m * m;
+sat *= sat;
+//sat *= sat;
+sat = 1 - sat;
+
+m *= randRange(0.9, 1.0);
+m = sinq(m * 0.25);
+
+led = hsv(T * 0.02, sat, m);
+
+
+
+// [1] O1
+// Wheel, color segments
+
+speed = 1.0;
+spokes = 7;
+
+s = (A * spokes) + (T * speed);
+
+hueCount = 6;
+hueSpeed = 0.2;
+h = ((s + (T * hueSpeed)) % hueCount);
+h /= hueCount;
+
+led = hsv(h, 1, 1);
+
+
+
+// [2] O2
+// Wheel, noise spokes
+
+speed = 0.9;
+spokes = 5;
+
+turn = T * speed;
+s = (A * spokes) - turn;
+
+v = sin01(s);
+
+sat = 1 - (v * v * v);
+
+// Add some value noise
+v *= lerp(0.7, 1, frac(X * 9 + Y * 28));
+
+led = hsv(T * 0.03, sat, v);
+
+
+
+
+// [3] R
+// Matrix: longer tracers
+speed = 1.5;
+
+m = 1 - frac((T * speed) - (P * 10));
+sat = m * m;
+sat *= sat;
+//sat *= sat;
+sat = 1 - sat;
+
+m *= randRange(0.9, 1.0);
+m = sinq(m * 0.25);
+
+led = hsv(T * 0.02, sat, m);
+
+
+
+
+
+// [4] C
+// Rainbow spinner. This one was very popular.
+arms = 1;
+angle = frac((A * arms) + (T));
+led = hsv(angle, 1, 1);
+
+
+
+// [5] A
+// Atari color cycling
+
+curve = noise2(X * Y * 99, Y * Y * Y * 97);
+
+speed = 1.0;
+stripes = 3;
+w = curve * stripes + T * speed;
+
+// value gradient (bright to dark)
+v = tri(w);
+
+// hue
+hueSteps = 16;
+h = floor(w % hueSteps) / hueSteps;
+
+// Fake YCbCr: Reduce saturation for brighter colors
+sat = lerp(1.0, 0.6, v);
+
+// One color band should be white ;) Have you played Atari today?
+sat = (h == 0) ? 0 : sat;
+
+led = hsv(h, sat, v);
+
+
+
+
+// [6] M
+// Pride flag!
 speed = 1.3;
 
+// Wavy motion
 wave = sinq(T * speed + X * 2.2);
 wave -= sinq(T * 0.7 + X * 1.414);
 wave *= 0.09;
@@ -29,6 +146,184 @@ c = (c < 0.2) ? ((c + 0.166667) / 2) : c;
 
 led = hsv(c, 1, 1);
 
+
+
+// [7] P
+// Purple radiation from the upper-left corner
+speed = 0.45;
+
+//dist = sqrt((X * X) + (Y * Y));
+dist = (X * X) + (Y * Y);
+
+stripes = 3.3;
+wave = sinq((dist * stripes) - (T * speed));
+
+// Maybe randomize the saturation a bit
+satSpeed = 0.01;
+sat = accum0(randRange(0, satSpeed));
+sat = lerp(0.8, 1.0, sinq(sat));
+
+// Color: Between blue-magenta and red-magenta
+h = lerp(0.75, 0.916667, tri(T * 0.03));
+led = hsv(h, sat, wave);
+
+
+
+
+
+color = S / 8;
+sat = sin01(Y * 3 + T * 0.3);
+v = sin01(Y * 6 + T * 0.3);
+led = hsv(color, sat, v)
+
+
+
+
+// [3] R
+// Fire?
+
+speed = 0.8 + (S * 0.1);
+
+wavy = sinq(Y * 3 + T + (S / 8));
+
+f = 1.0 - noise2(X + wavy + (S / 12), Y + (S / 7) + T * speed);
+
+// expand to range 0..2, yellow -> red
+f *= f * 2;
+
+// Fade out near the top
+f *= 0.5 + Y;
+
+led = rgb(min(f, 1), max(0, f - 1), 0);
+
+
+
+// Moving center around the whole sign
+
+cx = sin01(T * 0.1) * 8;
+cy = sin01(T * 0.4);
+
+a = atan2(Y - cy, S + X - cx) / (3.141 * 2);
+
+a += T * 0.05;
+
+brt = tri(a * 10);
+
+led = hsv(a, 0.7, brt)
+
+
+
+// The matrix
+
+speed = 0.8 + (S * 0.1);
+
+wavy = sinq((1 - Y) * 3 + T + (S / 8));
+
+f = 1.0 - noise2(X + wavy + (S / 12), (1 - Y) + (S / 7) + T * speed);
+
+f *= f;
+f *= f;
+f *= f;
+
+c = f * f * f;
+
+led = rgb(c, f, c);
+
+
+
+// Blue matrix 3D
+
+speed = 0.8 + (S * 0.1);
+
+wavy = sinq((1 - Y) * 3 + T + (S / 8));
+
+f = 1.0 - noise3(X + wavy + (S / 12), (1 - Y) + (S / 7) + T * speed, T * 0.2);
+
+f *= f;
+f *= f;
+f *= f;
+
+c = f * f * f;
+
+led = rgb(0, 0, f);
+
+
+
+// Yellow matrix
+
+speed = 0.8 + (S * 0.1);
+
+wavy = sinq((1 - Y) * 3 + T + (S / 8));
+
+f = 1.0 - noise3(X + wavy + (S / 12), (1 - Y) + (S / 7) + T * speed, T * 0.2);
+
+f *= f;
+f *= f;
+f *= f;
+
+c = f * f * f;
+
+//led = rgb(0, 0, f);
+led = hsv(0.667 - c, 1, f);
+
+
+
+
+XXXXXXXXXXXXXXXXX
+XX  REJECTED
+XXXXXXXXXXXXXXXXX
+
+// [3] R
+// Plasma
+speed = T * 0.1;
+x0 = sinq(speed);
+y0 = sinq(1.310 * speed);
+x1 = sinq(1.77 * speed);
+y1 = sinq(2.865 * speed);
+
+// Distance to point0
+dx0 = X - x0;
+dy0 = Y - y0;
+dist0 = sqrt((dx0 * dx0) + (dy0 * dy0));
+
+// Distance to point1
+dx1 = X - x1;
+dy1 = Y - y1;
+dist1 = sqrt((dx1 * dx1) + (dy1 * dy1));
+
+plasma = dist0 * dist1;
+
+// Radiate outward
+waveSpeed = 0.5;
+wave = tri(plasma + T * waveSpeed);
+
+// Fade saturation between 2 modes: red tail, and greyscale
+satCycle = sinq(T * 0.02);
+iw = wave * wave;
+iw *= iw;
+sat = lerp(1.0 - iw, 0, satCycle);
+
+led = hsv(0, sat, wave);
+
+
+
+
+// [3] R
+// Fire?
+
+speed = 0.8;
+
+wavy = sinq(Y * 3 + T);
+
+f = 1.0 - noise2(X + wavy, Y + T * speed);
+
+// expand to range 0..2, yellow -> red
+f *= f * 2;
+
+// Fade out near the top
+f *= 0.5 + Y;
+
+led = rgb(min(f, 1), max(0, f - 1), 0);
 
 
 

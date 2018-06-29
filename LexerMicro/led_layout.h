@@ -6,6 +6,7 @@
 #define TWOPI (6.283185f)
 
 // Width: Include padding between stations
+#define STATION_LEDS_ACROSS   (11)
 #define STATION_LED_WIDTH     (16)
 #define STATION_LED_HEIGHT    (19)
 
@@ -114,10 +115,10 @@ const station_data_t STATION_5[] = {
 // It's the huge M oh lord
 const station_data_t STATION_6[] = {
 	// Going left
-	RL*0,  9, 18, L, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U, L,L,L,L,L,L, D,D,D,D,D, D,D,D,D,D, D,D,D,D,D, D, L,L, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, R,R,R,R,R, R,R,R,R,R, R,R,R,R,R,R, X,
+	RL*0,  8, 18, L, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U, L,L,L,L,L,L, D,D,D,D,D, D,D,D,D,D, D,D,D,D,D, D, L,L, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, R,R,R,R,R, R,R,R,R,R, R,R,R,R,R,R, X,
 
 	// Going up
-	RL*2,  8, 18, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U, R,R,R,R,R,R, D,D,D,D,D, D,D,D,D,D, D,D,D,D,D, D, R,R, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, L, X,
+	RL*2,  9, 18, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U, R,R,R,R,R,R, D,D,D,D,D, D,D,D,D,D, D,D,D,D,D, D, R,R, U,U,U,U,U, U,U,U,U,U, U,U,U,U,U, U,U,U, L, X,
 
 	X
 };
@@ -147,18 +148,19 @@ const station_data_t * STATIONS[] = {
 	STATION_7
 };
 
-void _set_led_position(float x, float y, float * x_ptr, float * y_ptr, float * local_angle_ptr)
+void _set_led_position(float x, float y, bool * does_led_exist_ar, float * x_ptr, float * y_ptr, float * local_angle_ptr)
 {
+	*does_led_exist_ar = true;
 	*x_ptr = x * (1.0f / STATION_LED_WIDTH);
 	*y_ptr = y * (1.0f / STATION_LED_HEIGHT);
 
 	*local_angle_ptr = atan2(
 		-((float)(y) - STATION_LED_HEIGHT * 0.5f),
-		(float)(x) - STATION_LED_WIDTH * 0.5f
+		(float)(x) - STATION_LEDS_ACROSS * 0.5f
 	) * (1.0f / TWOPI);
 }
 
-void led_layout_set_all(uint8_t station_id, float * x_ar, float * y_ar, float * local_angle_ar)
+void led_layout_set_all(uint8_t station_id, bool * does_led_exist_ar, float * x_ar, float * y_ar, float * local_angle_ar)
 {
 	// Different stations have different LED layouts.
 	const station_data_t * data = STATIONS[station_id];
@@ -194,7 +196,7 @@ void led_layout_set_all(uint8_t station_id, float * x_ar, float * y_ar, float * 
 				y = data[i];
 
 				// Set this LED
-				_set_led_position(x, y, &x_ar[led_index], &y_ar[led_index], &local_angle_ar[led_index]);
+				_set_led_position(x, y, &does_led_exist_ar[led_index], &x_ar[led_index], &y_ar[led_index], &local_angle_ar[led_index]);
 
 				state = k_read_dir;
 			}
@@ -226,7 +228,7 @@ void led_layout_set_all(uint8_t station_id, float * x_ar, float * y_ar, float * 
 
 				led_index++;
 
-				_set_led_position(x, y, &x_ar[led_index], &y_ar[led_index], &local_angle_ar[led_index]);
+				_set_led_position(x, y, &does_led_exist_ar[led_index], &x_ar[led_index], &y_ar[led_index], &local_angle_ar[led_index]);
 
 				//state = k_read_dir	// already set
 			}
